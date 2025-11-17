@@ -126,28 +126,197 @@ COMMENT='Trazabilidad completa de movimientos de stock';
 
 -- 6. MODIFICAR: presupuesto_items
 -- Agregar referencias a servicios del catálogo y repuestos
-ALTER TABLE presupuesto_items
-ADD COLUMN IF NOT EXISTS id_servicio_catalogo BIGINT AFTER id_item,
-ADD COLUMN IF NOT EXISTS id_repuesto BIGINT AFTER id_servicio_catalogo,
-ADD CONSTRAINT fk_presupuesto_item_servicio
-    FOREIGN KEY (id_servicio_catalogo) REFERENCES servicios_catalogo(id_servicio) ON DELETE SET NULL,
-ADD CONSTRAINT fk_presupuesto_item_repuesto
-    FOREIGN KEY (id_repuesto) REFERENCES repuestos(id_repuesto) ON DELETE SET NULL,
-ADD INDEX idx_servicio_catalogo (id_servicio_catalogo),
-ADD INDEX idx_repuesto (id_repuesto);
+
+-- Agregar columnas (ignorar si ya existen)
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE presupuesto_items ADD COLUMN id_servicio_catalogo BIGINT AFTER id_item',
+        'SELECT "Column id_servicio_catalogo already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'presupuesto_items'
+    AND COLUMN_NAME = 'id_servicio_catalogo'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE presupuesto_items ADD COLUMN id_repuesto BIGINT AFTER id_servicio_catalogo',
+        'SELECT "Column id_repuesto already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'presupuesto_items'
+    AND COLUMN_NAME = 'id_repuesto'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Agregar foreign keys (ignorar si ya existen)
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE presupuesto_items ADD CONSTRAINT fk_presupuesto_item_servicio FOREIGN KEY (id_servicio_catalogo) REFERENCES servicios_catalogo(id_servicio) ON DELETE SET NULL',
+        'SELECT "FK fk_presupuesto_item_servicio already exists" AS message'
+    ) FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'presupuesto_items'
+    AND CONSTRAINT_NAME = 'fk_presupuesto_item_servicio'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE presupuesto_items ADD CONSTRAINT fk_presupuesto_item_repuesto FOREIGN KEY (id_repuesto) REFERENCES repuestos(id_repuesto) ON DELETE SET NULL',
+        'SELECT "FK fk_presupuesto_item_repuesto already exists" AS message'
+    ) FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'presupuesto_items'
+    AND CONSTRAINT_NAME = 'fk_presupuesto_item_repuesto'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Agregar índices (ignorar si ya existen)
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE presupuesto_items ADD INDEX idx_presupuesto_servicio_catalogo (id_servicio_catalogo)',
+        'SELECT "Index idx_presupuesto_servicio_catalogo already exists" AS message'
+    ) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'presupuesto_items'
+    AND INDEX_NAME = 'idx_presupuesto_servicio_catalogo'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE presupuesto_items ADD INDEX idx_presupuesto_repuesto (id_repuesto)',
+        'SELECT "Index idx_presupuesto_repuesto already exists" AS message'
+    ) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'presupuesto_items'
+    AND INDEX_NAME = 'idx_presupuesto_repuesto'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 7. MODIFICAR: factura_items
 -- Agregar referencias y control de descuento de stock
-ALTER TABLE factura_items
-ADD COLUMN IF NOT EXISTS id_servicio_catalogo BIGINT AFTER id_factura,
-ADD COLUMN IF NOT EXISTS id_repuesto BIGINT AFTER id_servicio_catalogo,
-ADD COLUMN IF NOT EXISTS aplica_descuento_stock BOOLEAN DEFAULT TRUE COMMENT 'Si es repuesto, descontar stock',
-ADD CONSTRAINT fk_factura_item_servicio
-    FOREIGN KEY (id_servicio_catalogo) REFERENCES servicios_catalogo(id_servicio) ON DELETE SET NULL,
-ADD CONSTRAINT fk_factura_item_repuesto
-    FOREIGN KEY (id_repuesto) REFERENCES repuestos(id_repuesto) ON DELETE SET NULL,
-ADD INDEX idx_servicio_catalogo (id_servicio_catalogo),
-ADD INDEX idx_repuesto (id_repuesto);
+
+-- Agregar columnas (ignorar si ya existen)
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE factura_items ADD COLUMN id_servicio_catalogo BIGINT AFTER id_factura',
+        'SELECT "Column id_servicio_catalogo already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'factura_items'
+    AND COLUMN_NAME = 'id_servicio_catalogo'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE factura_items ADD COLUMN id_repuesto BIGINT AFTER id_servicio_catalogo',
+        'SELECT "Column id_repuesto already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'factura_items'
+    AND COLUMN_NAME = 'id_repuesto'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE factura_items ADD COLUMN aplica_descuento_stock BOOLEAN DEFAULT TRUE COMMENT "Si es repuesto, descontar stock"',
+        'SELECT "Column aplica_descuento_stock already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'factura_items'
+    AND COLUMN_NAME = 'aplica_descuento_stock'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Agregar foreign keys (ignorar si ya existen)
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE factura_items ADD CONSTRAINT fk_factura_item_servicio FOREIGN KEY (id_servicio_catalogo) REFERENCES servicios_catalogo(id_servicio) ON DELETE SET NULL',
+        'SELECT "FK fk_factura_item_servicio already exists" AS message'
+    ) FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'factura_items'
+    AND CONSTRAINT_NAME = 'fk_factura_item_servicio'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE factura_items ADD CONSTRAINT fk_factura_item_repuesto FOREIGN KEY (id_repuesto) REFERENCES repuestos(id_repuesto) ON DELETE SET NULL',
+        'SELECT "FK fk_factura_item_repuesto already exists" AS message'
+    ) FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'factura_items'
+    AND CONSTRAINT_NAME = 'fk_factura_item_repuesto'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Agregar índices (ignorar si ya existen)
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE factura_items ADD INDEX idx_factura_servicio_catalogo (id_servicio_catalogo)',
+        'SELECT "Index idx_factura_servicio_catalogo already exists" AS message'
+    ) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'factura_items'
+    AND INDEX_NAME = 'idx_factura_servicio_catalogo'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE factura_items ADD INDEX idx_factura_repuesto (id_repuesto)',
+        'SELECT "Index idx_factura_repuesto already exists" AS message'
+    ) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'factura_items'
+    AND INDEX_NAME = 'idx_factura_repuesto'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- =====================================================
 -- DATOS DE EJEMPLO
