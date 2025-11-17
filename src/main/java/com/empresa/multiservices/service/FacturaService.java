@@ -28,17 +28,46 @@ public class FacturaService {
     @Transactional(readOnly = true)
     public List<Factura> listarTodas() {
         List<Factura> facturas = facturaRepository.findAll();
-        // Forzar la carga de los items para cada factura (evitar lazy loading)
+        // Forzar la carga de los items para cada factura y calcular totales
         for (Factura f : facturas) {
             f.getItems().size();
+            // Calcular totales desde los items si están en 0
+            if ((f.getSubtotal() == null || f.getSubtotal().compareTo(BigDecimal.ZERO) == 0)
+                && f.getItems() != null && !f.getItems().isEmpty()) {
+                calcularTotalesDesdeItems(f);
+            }
         }
         return facturas;
     }
 
     @Transactional(readOnly = true)
     public Factura obtenerPorId(Long id) {
-        return facturaRepository.findById(id)
+        Factura factura = facturaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Factura no encontrada"));
+
+        // Calcular totales desde los items si están en 0
+        if ((factura.getSubtotal() == null || factura.getSubtotal().compareTo(BigDecimal.ZERO) == 0)
+            && factura.getItems() != null && !factura.getItems().isEmpty()) {
+            calcularTotalesDesdeItems(factura);
+        }
+
+        return factura;
+    }
+
+    private void calcularTotalesDesdeItems(Factura factura) {
+        BigDecimal subtotal = BigDecimal.ZERO;
+
+        for (FacturaItem item : factura.getItems()) {
+            subtotal = subtotal.add(item.getSubtotal());
+        }
+
+        BigDecimal tasaIVA = new BigDecimal("0.10");
+        BigDecimal iva = subtotal.multiply(tasaIVA).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal total = subtotal.add(iva);
+
+        factura.setSubtotal(subtotal);
+        factura.setIva(iva);
+        factura.setTotal(total);
     }
 
     @Transactional
