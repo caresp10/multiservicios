@@ -21,6 +21,7 @@ public class FacturaItem {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_factura", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Factura factura;
     
     @Enumerated(EnumType.STRING)

@@ -31,21 +31,22 @@ public class Factura {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_pedido", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "facturas", "ordenesTrabajo", "presupuestos"})
     private Pedido pedido;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_ot")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "pedido", "presupuesto", "repuestos", "tecnico"})
     private OrdenTrabajo ot;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_presupuesto")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "pedido", "items"})
     private Presupuesto presupuesto;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_cliente", nullable = false)
+    @JsonIgnoreProperties({"facturas", "pedidos"})
     private Cliente cliente;
     
     @CreationTimestamp
