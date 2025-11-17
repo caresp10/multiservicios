@@ -348,7 +348,8 @@ INSERT INTO repuestos (codigo, nombre, descripcion, id_categoria, precio_costo, 
 -- =====================================================
 
 -- Vista: Servicios con su categoría
-CREATE OR REPLACE VIEW v_servicios_catalogo AS
+DROP VIEW IF EXISTS v_servicios_catalogo;
+CREATE VIEW v_servicios_catalogo AS
 SELECT
     s.id_servicio,
     s.codigo,
@@ -365,7 +366,8 @@ FROM servicios_catalogo s
 INNER JOIN categorias_servicio c ON s.id_categoria = c.id_categoria;
 
 -- Vista: Repuestos con stock bajo
-CREATE OR REPLACE VIEW v_repuestos_stock_bajo AS
+DROP VIEW IF EXISTS v_repuestos_stock_bajo;
+CREATE VIEW v_repuestos_stock_bajo AS
 SELECT
     r.id_repuesto,
     r.codigo,
@@ -383,7 +385,8 @@ AND r.activo = TRUE
 ORDER BY r.stock_actual ASC;
 
 -- Vista: Repuestos con margen de ganancia
-CREATE OR REPLACE VIEW v_repuestos_margen AS
+DROP VIEW IF EXISTS v_repuestos_margen;
+CREATE VIEW v_repuestos_margen AS
 SELECT
     r.id_repuesto,
     r.codigo,
