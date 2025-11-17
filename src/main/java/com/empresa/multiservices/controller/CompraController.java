@@ -67,6 +67,14 @@ public class CompraController {
                 compra.setDetalles(detalles);
             }
             Compra nuevaCompra = compraService.crear(compra);
+
+            // Si se solicita completar automáticamente
+            if (Boolean.TRUE.equals(compraDTO.getCompletar())) {
+                nuevaCompra = compraService.completarCompra(nuevaCompra.getIdCompra());
+                return ResponseEntity.status(HttpStatus.CREATED)
+                        .body(ApiResponse.success("Compra creada y completada exitosamente. Stock actualizado.", nuevaCompra));
+            }
+
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success("Compra creada exitosamente", nuevaCompra));
         }

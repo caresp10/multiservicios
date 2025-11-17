@@ -11,6 +11,7 @@ public class CompraDTO {
     private String estado;
     private String observaciones;
     private List<DetalleCompraDTO> detalles;
+    private Boolean completar; // Si es true, completar la compra automáticamente y actualizar stock
 
     // Getters and setters
     public String getNumero() { return numero; }
@@ -29,4 +30,6 @@ public class CompraDTO {
     public void setObservaciones(String observaciones) { this.observaciones = observaciones; }
     public List<DetalleCompraDTO> getDetalles() { return detalles; }
     public void setDetalles(List<DetalleCompraDTO> detalles) { this.detalles = detalles; }
+    public Boolean getCompletar() { return completar; }
+    public void setCompletar(Boolean completar) { this.completar = completar; }
 }
