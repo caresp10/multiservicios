@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Conexión Backend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-result {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test de Conexión Backend</h1>
+
+    <div class="test-result info">
+        <strong>Backend URL:</strong> http://localhost:8081/api<br>
+        <strong>Frontend URL:</strong> <span id="frontendUrl"></span>
+    </div>
+
+    <button onclick="testBackendConnection()">🚀 Probar Conexión</button>
+    <button onclick="testLogin()">🔐 Probar Login</button>
+
+    <div id="results"></div>
+
+    <script>
+        document.getElementById('frontendUrl').textContent = window.location.origin;
+
+        async function testBackendConnection() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="test-result info">Probando conexión...</div>';
+
+            try {
+                // Test 1: Verificar que el backend responde
+                const response = await fetch('http://localhost:8081/api/clientes', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    resultsDiv.innerHTML = `
+                        <div class="test-result success">
+                            ✅ <strong>Backend conectado correctamente!</strong><br>
+                            Status: ${response.status} (Requiere autenticación - esto es normal)<br>
+                            El servidor está funcionando y respondiendo.
+                        </div>
+                    `;
+                } else if (response.ok) {
+                    const data = await response.json();
+                    resultsDiv.innerHTML = `
+                        <div class="test-result success">
+                            ✅ <strong>Backend conectado y responde!</strong><br>
+                            Status: ${response.status}<br>
+                            Datos recibidos: ${JSON.stringify(data).substring(0, 100)}...
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="test-result error">
+                            ⚠️ <strong>Backend responde pero con error</strong><br>
+                            Status: ${response.status}<br>
+                            ${response.statusText}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="test-result error">
+                        ❌ <strong>Error de conexión con el backend!</strong><br>
+                        Error: ${error.message}<br><br>
+                        <strong>Posibles causas:</strong><br>
+                        1. El servidor backend no está ejecutándose en http://localhost:8081<br>
+                        2. Problema de CORS (revisa la consola del navegador F12)<br>
+                        3. Firewall bloqueando la conexión<br><br>
+                        <strong>Solución:</strong><br>
+                        1. Verifica que el backend esté ejecutándose: <code>netstat -ano | findstr :8081</code><br>
+                        2. Ejecuta: <code>start-backend.bat</code>
+                    </div>
+                `;
+                console.error('Error detallado:', error);
+            }
+        }
+
+        async function testLogin() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="test-result info">Probando login...</div>';
+
+            try {
+                const response = await fetch('http://localhost:8081/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    resultsDiv.innerHTML = `
+                        <div class="test-result success">
+                            ✅ <strong>Login exitoso!</strong><br>
+                            Token recibido: ${data.data.token.substring(0, 30)}...<br>
+                            Usuario: ${data.data.usuario.nombre} ${data.data.usuario.apellido}<br>
+                            Rol: ${data.data.usuario.rol}<br><br>
+                            <strong>El sistema está funcionando correctamente!</strong>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="test-result error">
+                            ❌ <strong>Error en login</strong><br>
+                            Status: ${response.status}<br>
+                            Mensaje: ${data.message || 'Error desconocido'}<br>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="test-result error">
+                        ❌ <strong>Error al intentar login</strong><br>
+                        Error: ${error.message}<br><br>
+                        Verifica que el backend esté ejecutándose.
+                    </div>
+                `;
+                console.error('Error detallado:', error);
+            }
+        }
+
+        // Probar conexión automáticamente al cargar
+        window.addEventListener('load', () => {
+            setTimeout(testBackendConnection, 500);
+        });
+    </script>
+</body>
+</html>

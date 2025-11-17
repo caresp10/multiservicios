@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sistema Multiservicios</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- El sidebar se carga dinámicamente desde components/sidebar.html -->
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Navbar -->
+            <nav class="top-navbar">
+                <div>
+                    <button class="btn btn-link d-md-none" id="sidebarToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h5 class="d-inline ms-2">Dashboard</h5>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar"></div>
+                    <div>
+                        <strong id="userName"></strong><br>
+                        <small class="text-muted" id="userRole"></small>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <div class="page-header">
+                    <h1><i class="fas fa-chart-line"></i> Panel de Control</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item active">Dashboard</li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="stat-card fade-in">
+                            <div class="stat-card-icon primary">
+                                <i class="fas fa-clipboard-list"></i>
+                            </div>
+                            <h3 id="totalPedidos">0</h3>
+                            <p>Pedidos Activos</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card fade-in">
+                            <div class="stat-card-icon success">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <h3 id="totalClientes">0</h3>
+                            <p>Clientes Registrados</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card fade-in">
+                            <div class="stat-card-icon warning">
+                                <i class="fas fa-wrench"></i>
+                            </div>
+                            <h3 id="totalOrdenes">0</h3>
+                            <p>Órdenes en Proceso</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card fade-in">
+                            <div class="stat-card-icon danger">
+                                <i class="fas fa-receipt"></i>
+                            </div>
+                            <h3 id="totalFacturas">0</h3>
+                            <p>Facturas del Mes</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="row g-4">
+                    <div class="col-md-8">
+                        <div class="table-card fade-in">
+                            <div class="table-header">
+                                <h5><i class="fas fa-clock"></i> Pedidos Recientes</h5>
+                                <a href="pedidos.html" class="btn btn-sm btn-primary">
+                                    Ver Todos <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Nº Pedido</th>
+                                            <th>Cliente</th>
+                                            <th>Fecha</th>
+                                            <th>Estado</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recentPedidosTable">
+                                        <tr>
+                                            <td colspan="5" class="text-center">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">Cargando...</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="table-card fade-in">
+                            <div class="table-header">
+                                <h5><i class="fas fa-exclamation-triangle"></i> Alertas</h5>
+                            </div>
+                            <div class="list-group list-group-flush" id="alertsList">
+                                <div class="spinner-container">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/dashboard.js"></script>
+</body>
+</html>

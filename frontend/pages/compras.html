@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compras - Sistema Multiservicios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Main Content -->
+        <div class="main-content">
+            <nav class="top-navbar">
+                <div>
+                    <button class="btn btn-link d-md-none" id="sidebarToggle" title="Abrir menú lateral"><i class="fas fa-bars"></i></button>
+                    <h5 class="d-inline ms-2">Gestión de Compras</h5>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar"></div>
+                    <div>
+                        <strong id="userName"></strong><br>
+                        <small class="text-muted" id="userRole"></small>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="content-area">
+                <div class="page-header">
+                    <h1><i class="fas fa-shopping-cart"></i> Gestión de Compras</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="dashboard.html">Dashboard</a></li>
+                            <li class="breadcrumb-item active">Compras</li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <div class="table-card fade-in">
+                    <div class="table-header">
+                        <div>
+                            <h5><i class="fas fa-list"></i> Lista de Compras</h5>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <input type="text" class="form-control form-control-sm" id="searchInput"
+                                   placeholder="Buscar compra...">
+                            <button class="btn btn-primary" onclick="openModalCompra()">
+                                <i class="fas fa-plus"></i> Nueva Compra
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Fecha</th>
+                                    <th>Proveedor</th>
+                                    <th>Nº Factura</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comprasTable">
+                                <tr>
+                                    <td colspan="7" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nueva/Editar Compra -->
+    <div class="modal fade" id="modalCompra" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalCompraTitle">
+                        <i class="fas fa-shopping-cart"></i> Nueva Compra
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="compraForm">
+                        <input type="hidden" id="compraId">
+
+                        <!-- Datos de la compra -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Número de Compra *</label>
+                                <input type="text" class="form-control" id="numeroCompra" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Fecha Compra *</label>
+                                <input type="date" class="form-control" id="fechaCompra" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Proveedor *</label>
+                                <select class="form-select" id="proveedor" required>
+                                    <option value="">Seleccione un proveedor</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Número de Factura</label>
+                                <input type="text" class="form-control" id="numeroFactura">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Forma de Pago</label>
+                                <select class="form-select" id="formaPago">
+                                    <option value="EFECTIVO">Efectivo</option>
+                                    <option value="TARJETA">Tarjeta</option>
+                                    <option value="TRANSFERENCIA">Transferencia</option>
+                                    <option value="CHEQUE">Cheque</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Estado</label>
+                                <select class="form-select" id="estado">
+                                    <option value="PENDIENTE">Pendiente</option>
+                                    <option value="COMPLETADA">Completada</option>
+                                    <option value="CANCELADA">Cancelada</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Observaciones</label>
+                                <textarea class="form-control" id="observaciones" rows="2"></textarea>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Detalles de la compra -->
+                        <h6><i class="fas fa-cogs"></i> Repuestos de la Compra</h6>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-5">
+                                <label class="form-label">Repuesto</label>
+                                <select class="form-select form-select-sm" id="repuestoSelect">
+                                    <option value="">Seleccione un repuesto</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Cantidad</label>
+                                <input type="number" class="form-control form-control-sm" id="cantidadDetalle" min="1" value="1">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Precio Unitario</label>
+                                <input type="number" class="form-control form-control-sm" id="precioDetalle" min="0" step="0.01" value="0">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">&nbsp;</label>
+                                <button type="button" class="btn btn-sm btn-success w-100" onclick="agregarDetalle()">
+                                    <i class="fas fa-plus"></i> Agregar
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Repuesto</th>
+                                        <th>Cantidad</th>
+                                        <th>Precio Unit.</th>
+                                        <th>Subtotal</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detallesTable">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">No hay repuestos agregados</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="3" class="text-end">Subtotal:</th>
+                                        <th colspan="2" id="subtotalCompra">Gs. 0</th>
+                                    </tr>
+                                    <tr>
+                                        <th colspan="3" class="text-end">IVA (10%):</th>
+                                        <th colspan="2" id="ivaCompra">Gs. 0</th>
+                                    </tr>
+                                    <tr>
+                                        <th colspan="3" class="text-end">Total:</th>
+                                        <th colspan="2" id="totalCompra">Gs. 0</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="guardarCompra()">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ver Detalles -->
+    <div class="modal fade" id="modalDetalles" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-alt"></i> Detalles de la Compra
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Número:</strong> <span id="detalleNumero"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Fecha:</strong> <span id="detalleFecha"></span>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Proveedor:</strong> <span id="detalleProveedor"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Nº Factura:</strong> <span id="detalleFactura"></span>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Repuesto</th>
+                                    <th>Cantidad</th>
+                                    <th>Precio Unit.</th>
+                                    <th>Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detallesVerTable">
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3" class="text-end">Total:</th>
+                                    <th id="detalleTotal"></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/compras.js"></script>
+</body>
+</html>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Técnicos - Sistema Multiservicios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- El sidebar se carga dinámicamente desde components/sidebar.html -->
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <nav class="top-navbar">
+                <div>
+                    <button class="btn btn-link d-md-none" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+                    <h5 class="d-inline ms-2">Gestión de Técnicos</h5>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar"></div>
+                    <div>
+                        <strong id="userName"></strong><br>
+                        <small class="text-muted" id="userRole"></small>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="content-area">
+                <div class="page-header">
+                    <h1><i class="fas fa-tools"></i> Gestión de Técnicos</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="dashboard.html">Dashboard</a></li>
+                            <li class="breadcrumb-item active">Técnicos</li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <div class="table-card fade-in">
+                    <div class="table-header">
+                        <div>
+                            <h5><i class="fas fa-list"></i> Lista de Técnicos</h5>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <input type="text" class="form-control form-control-sm" id="searchInput"
+                                   placeholder="Buscar técnico...">
+                            <button class="btn btn-primary" onclick="openModalTecnico()">
+                                <i class="fas fa-plus"></i> Nuevo Técnico
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>CI</th>
+                                    <th>Teléfono</th>
+                                    <th>Email</th>
+                                    <th>Especialidad</th>
+                                    <th>Nivel</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tecnicosTable">
+                                <tr>
+                                    <td colspan="9" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Técnico -->
+    <div class="modal fade" id="modalTecnico" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTecnicoTitle">
+                        <i class="fas fa-user-plus"></i> Nuevo Técnico
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="tecnicoForm">
+                        <input type="hidden" id="tecnicoId">
+                        <div class="row g-3">
+                            <!-- Nombre -->
+                            <div class="col-md-6">
+                                <label class="form-label">Nombre *</label>
+                                <input type="text" class="form-control" id="nombre" required>
+                            </div>
+
+                            <!-- Apellido -->
+                            <div class="col-md-6">
+                                <label class="form-label">Apellido *</label>
+                                <input type="text" class="form-control" id="apellido" required>
+                            </div>
+
+                            <!-- CI -->
+                            <div class="col-md-6">
+                                <label class="form-label">CI</label>
+                                <input type="text" class="form-control" id="ci">
+                            </div>
+
+                            <!-- Teléfono -->
+                            <div class="col-md-6">
+                                <label class="form-label">Teléfono</label>
+                                <input type="tel" class="form-control" id="telefono">
+                            </div>
+
+                            <!-- Celular -->
+                            <div class="col-md-6">
+                                <label class="form-label">Celular</label>
+                                <input type="tel" class="form-control" id="celular">
+                            </div>
+
+                            <!-- Email -->
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email">
+                            </div>
+
+                            <!-- Dirección -->
+                            <div class="col-12">
+                                <label class="form-label">Dirección</label>
+                                <textarea class="form-control" id="direccion" rows="2"
+                                          placeholder="Dirección del técnico..."></textarea>
+                            </div>
+
+                            <!-- Especialidad -->
+                            <div class="col-md-6">
+                                <label class="form-label">Especialidad</label>
+                                <select class="form-select" id="especialidad">
+                                    <option value="">Seleccione especialidad</option>
+                                </select>
+                            </div>
+
+                            <!-- Nivel de Experiencia -->
+                            <div class="col-md-6">
+                                <label class="form-label">Nivel de Experiencia</label>
+                                <select class="form-select" id="nivelExperiencia">
+                                    <option value="">Seleccione nivel</option>
+                                    <option value="JUNIOR">Junior</option>
+                                    <option value="SEMI_SENIOR">Semi-Senior</option>
+                                    <option value="SENIOR">Senior</option>
+                                </select>
+                            </div>
+
+                            <!-- Usuario de Login -->
+                            <div class="col-12">
+                                <label class="form-label">
+                                    <i class="fas fa-user-lock"></i> Usuario para Login (opcional)
+                                </label>
+                                <select class="form-select" id="idUsuario">
+                                    <option value="">Sin usuario asignado</option>
+                                </select>
+                                <small class="text-muted">
+                                    Seleccione un usuario con rol TECNICO para permitir que este técnico acceda al sistema
+                                </small>
+                            </div>
+
+                            <!-- Observaciones -->
+                            <div class="col-12">
+                                <label class="form-label">Observaciones</label>
+                                <textarea class="form-control" id="observaciones" rows="2"
+                                          placeholder="Observaciones adicionales..."></textarea>
+                            </div>
+
+                            <!-- Estado -->
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="activo" checked>
+                                    <label class="form-check-label" for="activo">
+                                        Técnico activo
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="guardarTecnico()">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/tecnicos.js"></script>
+</body>
+</html>

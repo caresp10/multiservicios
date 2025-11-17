@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(taskkill //F //PID 38276)",
+      "Bash(./mvnw spring-boot:run:*)",
+      "Bash(taskkill //F //PID 56024)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

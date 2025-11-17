@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facturas - Sistema Multiservicios</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- El sidebar se carga dinámicamente desde components/sidebar.html -->
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Navbar -->
+            <nav class="top-navbar">
+                <div>
+                    <button class="btn btn-link d-md-none" id="sidebarToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h5 class="d-inline ms-2">Facturas</h5>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar"></div>
+                    <div>
+                        <strong id="userName"></strong><br>
+                        <small class="text-muted" id="userRole"></small>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <div class="page-header">
+                    <h1><i class="fas fa-receipt"></i> Gestión de Facturas</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="dashboard.html">Dashboard</a></li>
+                            <li class="breadcrumb-item active">Facturas</li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <!-- Filtros y Acciones -->
+                <div class="table-card mb-4">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" id="searchInput"
+                                       placeholder="Buscar por número o cliente...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="filterEstado">
+                                <option value="">Todos los estados</option>
+                                <option value="PENDIENTE">Pendiente</option>
+                                <option value="PAGADA">Pagada</option>
+                                <option value="VENCIDA">Vencida</option>
+                                <option value="ANULADA">Anulada</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="filterCliente">
+                                <option value="">Todos los clientes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 text-end">
+                            <button class="btn btn-primary w-100" onclick="openModalFactura()">
+                                <i class="fas fa-plus"></i> Nueva Factura
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Facturas -->
+                <div class="table-card">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nº Factura</th>
+                                    <th>Cliente</th>
+                                    <th>Fecha Emisión</th>
+                                    <th>Subtotal</th>
+                                    <th>IVA</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th>Forma Pago</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="facturasTable">
+                                <tr>
+                                    <td colspan="9" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Generar Factura desde OT -->
+    <div class="modal fade" id="modalFactura" tabindex="-1">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-receipt"></i> Generar Factura desde Orden de Trabajo
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <div class="row">
+                            <!-- Lista de OTs Terminadas -->
+                            <div class="col-md-4 border-end">
+                                <h6 class="mb-3"><i class="fas fa-list"></i> Órdenes Listas para Facturar</h6>
+                                <div class="input-group mb-3">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" class="form-control" id="searchOT" placeholder="Buscar OT...">
+                                </div>
+                                <div id="listaOTs" style="max-height: 70vh; overflow-y: auto;">
+                                    <!-- Las OTs se cargarán aquí dinámicamente -->
+                                </div>
+                            </div>
+
+                            <!-- Detalle de la OT Seleccionada -->
+                            <div class="col-md-8">
+                                <div id="detalleVacio" class="text-center text-muted py-5">
+                                    <i class="fas fa-hand-pointer fa-3x mb-3"></i>
+                                    <h5>Seleccione una orden de trabajo para continuar</h5>
+                                </div>
+
+                                <div id="detalleOT" style="display: none;">
+                                    <form id="facturaForm">
+                                        <input type="hidden" id="otSeleccionadaId">
+                                        <input type="hidden" id="idCliente">
+                                        <input type="hidden" id="idPedido">
+
+                                        <!-- Información General -->
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0"><i class="fas fa-info-circle"></i> Información de la Orden</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <p class="mb-1"><strong>Nº OT:</strong> <span id="detNumeroOT"></span></p>
+                                                        <p class="mb-1"><strong>Pedido:</strong> <span id="detNumeroPedido"></span></p>
+                                                        <p class="mb-1"><strong>Cliente:</strong> <span id="detCliente"></span></p>
+                                                        <p class="mb-1"><strong>Documento:</strong> <span id="detDocumento"></span></p>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <p class="mb-1"><strong>Dirección:</strong> <span id="detDireccion"></span></p>
+                                                        <p class="mb-1"><strong>Teléfono:</strong> <span id="detTelefono"></span></p>
+                                                        <p class="mb-1"><strong>Técnico:</strong> <span id="detTecnico"></span></p>
+                                                        <p class="mb-1"><strong>Fecha Finalización:</strong> <span id="detFechaFinalizacion"></span></p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Problema Inicial y Trabajo Realizado -->
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0"><i class="fas fa-clipboard"></i> Descripción del Trabajo</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label class="fw-bold">Problema Inicial (Pedido):</label>
+                                                    <p class="mb-0 text-muted" id="detProblemaInicial"></p>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="fw-bold">Diagnóstico Técnico:</label>
+                                                    <p class="mb-0 text-muted" id="detDiagnostico"></p>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="fw-bold">Informe Final:</label>
+                                                    <p class="mb-0 text-muted" id="detInforme"></p>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <label class="fw-bold">Horas Trabajadas:</label>
+                                                        <p class="mb-0" id="detHoras"></p>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="fw-bold">Costo Mano de Obra:</label>
+                                                        <p class="mb-0" id="detCostoManoObra"></p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Items del Presupuesto -->
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0"><i class="fas fa-list-alt"></i> Items del Presupuesto Original</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Descripción</th>
+                                                                <th class="text-end">Cant.</th>
+                                                                <th class="text-end">P. Unit.</th>
+                                                                <th class="text-end">Subtotal</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="detItemsPresupuesto">
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Repuestos Utilizados por el Técnico (Informativo) -->
+                                        <div class="card mb-3" id="cardRepuestosInformativos" style="display: none;">
+                                            <div class="card-header bg-info bg-opacity-10">
+                                                <h6 class="mb-0"><i class="fas fa-tools"></i> Repuestos Registrados por el Técnico (Informativo)</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="alert alert-info">
+                                                    <i class="fas fa-info-circle"></i> Estos repuestos fueron registrados por el técnico. Puede agregarlos a la factura con su costo en la sección siguiente.
+                                                </div>
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Repuesto</th>
+                                                                <th class="text-center">Cantidad</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="detRepuestosInformativos">
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Repuestos y Costos Adicionales para Facturar -->
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-success bg-opacity-10">
+                                                <h6 class="mb-0"><i class="fas fa-plus-circle"></i> Agregar Repuestos y Costos Adicionales para Facturar</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row mb-3">
+                                                    <div class="col-md-5">
+                                                        <label class="form-label">Descripción *</label>
+                                                        <input type="text" class="form-control" id="nuevoItemDesc" placeholder="Ej: Repuesto ABC">
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Cantidad *</label>
+                                                        <input type="number" class="form-control" id="nuevoItemCant" value="1" min="0.01" step="0.01">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Precio Unitario *</label>
+                                                        <input type="number" class="form-control" id="nuevoItemPrecio" placeholder="0" min="0" step="0.01">
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">&nbsp;</label>
+                                                        <button type="button" class="btn btn-success w-100" onclick="agregarItemFactura()">
+                                                            <i class="fas fa-plus"></i> Agregar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-bordered">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                <th>Descripción</th>
+                                                                <th class="text-end">Cant.</th>
+                                                                <th class="text-end">P. Unit.</th>
+                                                                <th class="text-end">Subtotal</th>
+                                                                <th class="text-center">Acción</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="detItemsAdicionales">
+                                                            <tr>
+                                                                <td colspan="5" class="text-center text-muted">No hay items adicionales agregados</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Totales -->
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0"><i class="fas fa-calculator"></i> Totales de Factura</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-8">
+                                                        <table class="table table-sm">
+                                                            <tr>
+                                                                <td class="text-end"><strong>Subtotal:</strong></td>
+                                                                <td class="text-end"><strong id="totalSubtotal">₲ 0</strong></td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td class="text-end"><strong>IVA (10%):</strong></td>
+                                                                <td class="text-end"><strong id="totalIva">₲ 0</strong></td>
+                                                            </tr>
+                                                            <tr class="table-primary">
+                                                                <td class="text-end"><h5 class="mb-0">TOTAL:</h5></td>
+                                                                <td class="text-end"><h5 class="mb-0" id="totalFinal">₲ 0</h5></td>
+                                                            </tr>
+                                                        </table>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="mb-2">
+                                                            <label class="form-label">Forma de Pago *</label>
+                                                            <select class="form-select form-select-sm" id="formaPago" required>
+                                                                <option value="EFECTIVO">Efectivo</option>
+                                                                <option value="TRANSFERENCIA">Transferencia</option>
+                                                                <option value="TARJETA">Tarjeta</option>
+                                                                <option value="CHEQUE">Cheque</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <label class="form-label">Estado *</label>
+                                                            <select class="form-select form-select-sm" id="estado" required>
+                                                                <option value="PENDIENTE">Pendiente</option>
+                                                                <option value="PAGADA">Pagada</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Datos Adicionales (Colapsable) -->
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-light">
+                                                <a class="text-decoration-none text-dark" data-bs-toggle="collapse" href="#collapseAdicional">
+                                                    <i class="fas fa-chevron-down"></i> Datos Adicionales (Opcional)
+                                                </a>
+                                            </div>
+                                            <div class="collapse" id="collapseAdicional">
+                                                <div class="card-body">
+                                                    <div class="row">
+                                                        <div class="col-md-4 mb-2">
+                                                            <label class="form-label">Timbrado</label>
+                                                            <input type="text" class="form-control form-control-sm" id="timbrado" maxlength="20">
+                                                        </div>
+                                                        <div class="col-md-4 mb-2">
+                                                            <label class="form-label">Fecha Vencimiento</label>
+                                                            <input type="date" class="form-control form-control-sm" id="fechaVencimiento">
+                                                        </div>
+                                                        <div class="col-md-4 mb-2">
+                                                            <label class="form-label">Descuento</label>
+                                                            <input type="number" class="form-control form-control-sm" id="descuento" value="0" min="0" step="0.01">
+                                                        </div>
+                                                        <div class="col-12">
+                                                            <label class="form-label">Observaciones</label>
+                                                            <textarea class="form-control form-control-sm" id="observaciones" rows="2"></textarea>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary btn-lg" id="btnGenerarFactura" onclick="guardarFactura()" style="display: none;">
+                        <i class="fas fa-file-invoice"></i> Generar Factura
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/facturas.js"></script>
+</body>
+</html>

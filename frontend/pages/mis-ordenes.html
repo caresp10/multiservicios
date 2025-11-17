@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Órdenes de Trabajo - Sistema Multiservicios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- El sidebar se carga dinámicamente desde components/sidebar.html -->
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <nav class="top-navbar">
+                <div>
+                    <button class="btn btn-link d-md-none" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+                    <h5 class="d-inline ms-2">Mis Órdenes de Trabajo</h5>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar"></div>
+                    <div>
+                        <strong id="userName"></strong><br>
+                        <small class="text-muted" id="userRole"></small>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="content-area">
+                <div class="page-header">
+                    <h1><i class="fas fa-tasks"></i> Mis Órdenes de Trabajo</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="dashboard.html">Dashboard</a></li>
+                            <li class="breadcrumb-item active">Mis Órdenes</li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <!-- Filtros -->
+                <div class="table-card fade-in mb-3">
+                    <div class="table-header">
+                        <h5><i class="fas fa-filter"></i> Filtros</h5>
+                    </div>
+                    <div class="p-3">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" id="searchInput"
+                                       placeholder="Buscar por número OT o cliente...">
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="filterEstado">
+                                    <option value="">Todos los estados</option>
+                                    <option value="ASIGNADA">Asignada</option>
+                                    <option value="EN_PROCESO">En Proceso</option>
+                                    <option value="ESPERANDO_REVISION">Esperando Revisión</option>
+                                    <option value="DEVUELTA_A_TECNICO">Devuelta</option>
+                                    <option value="TERMINADA">Terminada</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="filterPrioridad">
+                                    <option value="">Todas las prioridades</option>
+                                    <option value="ALTA">Alta</option>
+                                    <option value="MEDIA">Media</option>
+                                    <option value="BAJA">Baja</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Órdenes -->
+                <div class="table-card fade-in">
+                    <div class="table-header">
+                        <h5><i class="fas fa-list"></i> Lista de Órdenes Asignadas</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nº OT</th>
+                                    <th>Cliente</th>
+                                    <th>Descripción</th>
+                                    <th>Estado</th>
+                                    <th>Prioridad</th>
+                                    <th>Fecha Asignación</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordenesTable">
+                                <tr>
+                                    <td colspan="7" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Trabajar OT -->
+    <div class="modal fade" id="modalTrabajarOT" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalOTTitle">
+                        <i class="fas fa-wrench"></i> Orden de Trabajo
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="otForm">
+                        <input type="hidden" id="otId">
+
+                        <!-- Información del Cliente y Pedido (readonly) -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-12">
+                                <h6 class="border-bottom pb-2"><i class="fas fa-info-circle"></i> Información del Servicio</h6>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Número OT</label>
+                                <input type="text" class="form-control" id="numeroOT" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Número Pedido</label>
+                                <input type="text" class="form-control" id="numeroPedido" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Cliente</label>
+                                <input type="text" class="form-control" id="cliente" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Teléfono Cliente</label>
+                                <input type="text" class="form-control" id="telefonoCliente" readonly>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label"><i class="fas fa-map-marker-alt"></i> Dirección del Cliente</label>
+                                <input type="text" class="form-control" id="direccionCliente" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Estado</label>
+                                <input type="text" class="form-control" id="estadoOT" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Prioridad</label>
+                                <input type="text" class="form-control" id="prioridadOT" readonly>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Descripción del Problema</label>
+                                <textarea class="form-control" id="descripcionProblema" rows="3" readonly></textarea>
+                            </div>
+                            <div class="col-12" id="divObservacionesDevolucion" style="display:none;">
+                                <div class="alert alert-warning">
+                                    <strong><i class="fas fa-exclamation-triangle"></i> Observaciones de Devolución:</strong>
+                                    <p id="observacionesDevolucion" class="mb-0 mt-2"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Trabajo del Técnico -->
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <h6 class="border-bottom pb-2"><i class="fas fa-tools"></i> Información del Trabajo</h6>
+                            </div>
+
+                            <!-- Diagnóstico Técnico -->
+                            <div class="col-12">
+                                <label for="diagnosticoTecnico" class="form-label">
+                                    <i class="fas fa-stethoscope"></i> Diagnóstico Técnico *
+                                </label>
+                                <textarea class="form-control" id="diagnosticoTecnico" rows="3"
+                                          required placeholder="Describa el diagnóstico del problema encontrado..."></textarea>
+                            </div>
+
+                            <!-- Informe Final -->
+                            <div class="col-12">
+                                <label for="informeFinal" class="form-label">
+                                    <i class="fas fa-clipboard-check"></i> Informe Final del Trabajo *
+                                </label>
+                                <textarea class="form-control" id="informeFinal" rows="3"
+                                          required placeholder="Describa el trabajo realizado y la solución aplicada..."></textarea>
+                            </div>
+
+                            <!-- Horas Trabajadas -->
+                            <div class="col-md-6" id="divHorasTrabajadas">
+                                <label for="horasTrabajadas" class="form-label">
+                                    <i class="fas fa-clock"></i> Horas Trabajadas *
+                                </label>
+                                <input type="number" class="form-control" id="horasTrabajadas"
+                                       step="0.5" min="0" required placeholder="0.0">
+                                <small class="text-muted">Ingrese las horas en formato decimal (ej: 2.5 para 2h 30min)</small>
+                            </div>
+
+                            <!-- Costo Mano de Obra (solo ADMIN) -->
+                            <div class="col-md-6" id="divCostoManoObra" style="display:none;">
+                                <label for="costoManoObra" class="form-label">
+                                    <i class="fas fa-dollar-sign"></i> Costo Mano de Obra
+                                </label>
+                                <input type="number" class="form-control" id="costoManoObra"
+                                       step="1000" min="0" placeholder="0">
+                                <small class="text-muted">Será calculado y actualizado por el administrador para facturación</small>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-success" id="btnIniciarTrabajo" onclick="iniciarTrabajo()" style="display:none;">
+                        <i class="fas fa-play"></i> Iniciar Trabajo
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarProgreso" onclick="guardarProgreso()" style="display:none;">
+                        <i class="fas fa-save"></i> Guardar Progreso
+                    </button>
+                    <button type="button" class="btn btn-success" id="btnEnviarRevision" onclick="enviarRevision()" style="display:none;">
+                        <i class="fas fa-check-double"></i> Enviar a Revisión
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/mis-ordenes.js"></script>
+</body>
+</html>

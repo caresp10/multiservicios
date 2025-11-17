@@ -1,0 +1,39 @@
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <i class="fas fa-tools fa-2x mb-2"></i>
+        <h4>Multiservicios</h4>
+    </div>
+    <ul class="sidebar-menu">
+        <li><a href="dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
+        <li><a href="clientes.html"><i class="fas fa-users"></i> Clientes</a></li>
+        <li><a href="pedidos.html"><i class="fas fa-clipboard-list"></i> Pedidos</a></li>
+        <li><a href="presupuestos.html"><i class="fas fa-file-invoice-dollar"></i> Presupuestos</a></li>
+        <li><a href="ordenes.html"><i class="fas fa-wrench"></i> Órdenes de Trabajo</a></li>
+        <li id="menuMisOrdenes"><a href="mis-ordenes.html"><i class="fas fa-tasks"></i> Mis Órdenes</a></li>
+        <li><a href="facturas.html"><i class="fas fa-receipt"></i> Facturas</a></li>
+        <li class="menu-item-submenu" id="menuInventario">
+            <a href="#" class="submenu-toggle">
+                <i class="fas fa-boxes"></i> Inventario
+                <i class="fas fa-chevron-down submenu-arrow"></i>
+            </a>
+            <ul class="submenu">
+                <li><a href="proveedores.html"><i class="fas fa-truck"></i> Proveedores</a></li>
+                <li><a href="repuestos.html"><i class="fas fa-cogs"></i> Repuestos</a></li>
+                <li><a href="compras.html"><i class="fas fa-shopping-cart"></i> Compras</a></li>
+            </ul>
+        </li>
+        <li class="menu-item-submenu" id="menuAdministracion">
+            <a href="#" class="submenu-toggle">
+                <i class="fas fa-cog"></i> Administración
+                <i class="fas fa-chevron-down submenu-arrow"></i>
+            </a>
+            <ul class="submenu">
+                <li><a href="usuarios.html"><i class="fas fa-user-cog"></i> Usuarios</a></li>
+                <li><a href="tecnicos.html"><i class="fas fa-user-hard-hat"></i> Técnicos</a></li>
+                <li><a href="categorias.html"><i class="fas fa-tags"></i> Categorías</a></li>
+            </ul>
+        </li>
+        <li><a href="reportes.html"><i class="fas fa-chart-bar"></i> Reportes</a></li>
+        <li><a href="#" onclick="event.preventDefault(); if(confirm('¿Está seguro que desea cerrar sesión?')) AuthService.logout();" class="text-danger"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a></li>
+    </ul>
+</div>

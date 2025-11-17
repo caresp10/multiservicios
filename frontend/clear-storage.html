@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpiar Cache</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        h1 { color: #333; margin-bottom: 20px; }
+        .success { color: #28a745; font-size: 18px; margin: 20px 0; }
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+        }
+        .btn:hover { background: #5568d3; }
+        .icon { font-size: 50px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🧹</div>
+        <h1>Limpieza de Cache</h1>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        // Limpiar completamente el localStorage
+        localStorage.clear();
+
+        // Limpiar sessionStorage también
+        sessionStorage.clear();
+
+        // Mostrar mensaje de éxito
+        document.getElementById('message').innerHTML = `
+            <div class="success">
+                ✓ Cache limpiado exitosamente
+            </div>
+            <p>Se han eliminado todos los datos almacenados.</p>
+            <a href="index.html" class="btn">Ir al Login</a>
+        `;
+    </script>
+</body>
+</html>
