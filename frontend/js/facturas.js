@@ -627,6 +627,7 @@ async function guardarFactura() {
     // Agregar items del presupuesto
     itemsPresupuesto.forEach(item => {
         todosLosItems.push({
+            tipoItem: 'SERVICIO',
             descripcion: item.descripcion,
             cantidad: item.cantidad,
             precioUnitario: item.precioUnitario,
@@ -637,6 +638,7 @@ async function guardarFactura() {
     // Agregar items adicionales
     itemsAdicionales.forEach(item => {
         todosLosItems.push({
+            tipoItem: 'SERVICIO',
             descripcion: item.descripcion,
             cantidad: item.cantidad,
             precioUnitario: item.precioUnitario,

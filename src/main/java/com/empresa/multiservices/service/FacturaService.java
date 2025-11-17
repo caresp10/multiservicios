@@ -79,6 +79,17 @@ public class FacturaService {
             factura.setSubtotal(java.math.BigDecimal.ZERO);
         }
 
+        // CRÍTICO: Establecer la relación bidireccional con los items
+        if (factura.getItems() != null && !factura.getItems().isEmpty()) {
+            for (FacturaItem item : factura.getItems()) {
+                item.setFactura(factura);
+                // Si no tiene tipoItem, asignar SERVICIO por defecto
+                if (item.getTipoItem() == null) {
+                    item.setTipoItem(com.empresa.multiservices.model.enums.TipoItemFactura.SERVICIO);
+                }
+            }
+        }
+
         Factura saved = facturaRepository.save(factura);
 
         // Actualizar estado del pedido a FACTURADO
