@@ -96,6 +96,8 @@ function renderFacturas(data) {
             </td>
         </tr>
     `).join('');
+}
+
 // Vista de factura por id
 window.verFacturaPorId = async function(id) {
     try {
@@ -153,6 +155,8 @@ function renderFacturaHTML(factura) {
             </button>
         </div>
     `;
+}
+
 // Modal de edición de factura
 window.editarFactura = async function(id) {
     try {
@@ -228,9 +232,6 @@ window.editarFactura = async function(id) {
         alert('Error al cargar factura para editar');
     }
 }
-    // Garantiza la exportación global
-    window.editarFactura = window.editarFactura;
-}
 
 // Exportar factura a PDF
 window.exportarFacturaPDF = async function(id) {
@@ -278,7 +279,6 @@ window.exportarFacturaPDF = async function(id) {
     } catch (error) {
         alert('Error al exportar la factura');
     }
-}
 }
 
 document.getElementById('searchInput').addEventListener('input', aplicarFiltros);
