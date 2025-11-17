@@ -8,7 +8,6 @@ public class CompraDTO {
     private Long proveedorId;
     private String numeroFactura;
     private String formaPago;
-    private String estado;
     private String observaciones;
     private List<DetalleCompraDTO> detalles;
     private Boolean completar; // Si es true, completar la compra automáticamente y actualizar stock
@@ -24,8 +23,6 @@ public class CompraDTO {
     public void setNumeroFactura(String numeroFactura) { this.numeroFactura = numeroFactura; }
     public String getFormaPago() { return formaPago; }
     public void setFormaPago(String formaPago) { this.formaPago = formaPago; }
-    public String getEstado() { return estado; }
-    public void setEstado(String estado) { this.estado = estado; }
     public String getObservaciones() { return observaciones; }
     public void setObservaciones(String observaciones) { this.observaciones = observaciones; }
     public List<DetalleCompraDTO> getDetalles() { return detalles; }

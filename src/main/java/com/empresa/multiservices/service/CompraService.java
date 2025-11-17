@@ -47,9 +47,6 @@ public class CompraService {
             compra.setFechaCompra(LocalDate.now());
         }
 
-        // Estado inicial
-        compra.setEstado("PENDIENTE");
-
         // Asociar la compra a cada detalle antes de persistir
         if (compra.getDetalles() != null) {
             for (DetalleCompra detalle : compra.getDetalles()) {
@@ -61,40 +58,20 @@ public class CompraService {
         return compraRepository.save(compra);
     }
 
-    public Compra agregarDetalle(Long idCompra, DetalleCompra detalle) {
-        Compra compra = obtenerPorId(idCompra);
-
-        if (!compra.esPendiente()) {
-            throw new IllegalStateException("Solo se pueden agregar detalles a compras en estado PENDIENTE");
+    /**
+     * Crea una compra y actualiza el stock de los repuestos automáticamente
+     */
+    public Compra crearYCompletar(Compra compra) {
+        // Validar que haya detalles
+        if (compra.getDetalles() == null || compra.getDetalles().isEmpty()) {
+            throw new IllegalArgumentException("La compra debe tener al menos un detalle");
         }
 
-        // Validar y cargar el repuesto
-        if (detalle.getRepuesto() == null || detalle.getRepuesto().getIdRepuesto() == null) {
-            throw new IllegalArgumentException("Debe especificar un repuesto");
-        }
+        // Crear la compra
+        Compra nuevaCompra = crear(compra);
 
-        Repuesto repuesto = repuestoService.obtenerPorId(detalle.getRepuesto().getIdRepuesto());
-        detalle.setRepuesto(repuesto);
-
-        // Agregar detalle (esto recalcula totales automáticamente)
-        compra.agregarDetalle(detalle);
-
-        return compraRepository.save(compra);
-    }
-
-    public Compra completarCompra(Long idCompra) {
-        Compra compra = obtenerPorId(idCompra);
-
-        if (compra.esCompletada()) {
-            throw new IllegalStateException("La compra ya está completada");
-        }
-
-        if (compra.getDetalles().isEmpty()) {
-            throw new IllegalStateException("No se puede completar una compra sin detalles");
-        }
-
-        // Incrementar stock y actualizar precio de compra de todos los repuestos
-        for (DetalleCompra detalle : compra.getDetalles()) {
+        // Actualizar stock y precios de todos los repuestos
+        for (DetalleCompra detalle : nuevaCompra.getDetalles()) {
             // Incrementar stock
             repuestoService.incrementarStock(
                 detalle.getRepuesto().getIdRepuesto(),
@@ -108,29 +85,13 @@ public class CompraService {
             );
         }
 
-        compra.marcarComoCompletada();
-        return compraRepository.save(compra);
+        return nuevaCompra;
     }
 
-    public Compra cancelarCompra(Long idCompra) {
-        Compra compra = obtenerPorId(idCompra);
-
-        if (compra.esCompletada()) {
-            throw new IllegalStateException("No se puede cancelar una compra completada. El stock ya fue actualizado.");
-        }
-
-        compra.cancelar();
-        return compraRepository.save(compra);
-    }
 
     @Transactional(readOnly = true)
     public List<Compra> listarTodas() {
         return compraRepository.findAll();
-    }
-
-    @Transactional(readOnly = true)
-    public List<Compra> listarPorEstado(String estado) {
-        return compraRepository.findByEstado(estado);
     }
 
     @Transactional(readOnly = true)
@@ -157,11 +118,8 @@ public class CompraService {
 
     public void eliminar(Long id) {
         Compra compra = obtenerPorId(id);
-
-        if (compra.esCompletada()) {
-            throw new IllegalStateException("No se puede eliminar una compra completada. El stock ya fue actualizado.");
-        }
-
+        // IMPORTANTE: Al eliminar una compra, NO se revierte el stock automáticamente
+        // Si necesita revertir, debe ajustar el stock manualmente
         compraRepository.delete(compra);
     }
 

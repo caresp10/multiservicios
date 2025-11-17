@@ -58,10 +58,6 @@ public class Compra {
     @Builder.Default
     private BigDecimal total = BigDecimal.ZERO;
 
-    @Column(length = 20)
-    @Builder.Default
-    private String estado = "PENDIENTE"; // PENDIENTE, COMPLETADA, CANCELADA
-
     @Column(name = "forma_pago", length = 50)
     private String formaPago;
 
@@ -101,21 +97,5 @@ public class Compra {
         // Calcular IVA al 10% (Paraguay)
         this.iva = subtotal.multiply(new BigDecimal("0.10"));
         this.total = subtotal.add(iva);
-    }
-
-    public boolean esPendiente() {
-        return "PENDIENTE".equals(estado);
-    }
-
-    public boolean esCompletada() {
-        return "COMPLETADA".equals(estado);
-    }
-
-    public void marcarComoCompletada() {
-        this.estado = "COMPLETADA";
-    }
-
-    public void cancelar() {
-        this.estado = "CANCELADA";
     }
 }
