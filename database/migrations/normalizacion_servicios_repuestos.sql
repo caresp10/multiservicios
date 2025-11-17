@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS servicios_catalogo (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (id_categoria) REFERENCES categorias(id_categoria) ON DELETE RESTRICT,
+    FOREIGN KEY (id_categoria) REFERENCES categorias_servicio(id_categoria) ON DELETE RESTRICT,
     INDEX idx_categoria (id_categoria),
     INDEX idx_activo (activo),
     INDEX idx_codigo (codigo)
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS repuestos (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (id_categoria) REFERENCES categorias(id_categoria) ON DELETE SET NULL,
+    FOREIGN KEY (id_categoria) REFERENCES categorias_servicio(id_categoria) ON DELETE SET NULL,
     INDEX idx_codigo (codigo),
     INDEX idx_nombre (nombre),
     INDEX idx_stock_bajo (stock_actual, stock_minimo),
@@ -193,7 +193,7 @@ SELECT
     c.id_categoria,
     c.nombre AS categoria_nombre
 FROM servicios_catalogo s
-INNER JOIN categorias c ON s.id_categoria = c.id_categoria;
+INNER JOIN categorias_servicio c ON s.id_categoria = c.id_categoria;
 
 -- Vista: Repuestos con stock bajo
 CREATE OR REPLACE VIEW v_repuestos_stock_bajo AS
@@ -225,7 +225,7 @@ SELECT
     r.stock_actual,
     c.nombre AS categoria_nombre
 FROM repuestos r
-LEFT JOIN categorias c ON r.id_categoria = c.id_categoria
+LEFT JOIN categorias_servicio c ON r.id_categoria = c.id_categoria
 WHERE r.activo = TRUE
 ORDER BY r.margen_ganancia DESC;
 
