@@ -81,9 +81,13 @@ function renderFacturas(data) {
             </td>
             <td>${factura.formaPago || 'N/A'}</td>
             <td>
-                <button class="btn btn-sm btn-outline-primary" onclick="editarFactura(${factura.idFactura})"
-                        title="Editar">
-                    <i class="fas fa-edit"></i>
+                <button class="btn btn-sm btn-outline-info" onclick="verDetallesFactura(${factura.idFactura})"
+                        title="Ver Detalles">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-success" onclick="exportarPDF(${factura.idFactura})"
+                        title="Exportar PDF">
+                    <i class="fas fa-file-pdf"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-danger" onclick="eliminarFactura(${factura.idFactura})"
                         title="Eliminar">
@@ -543,7 +547,194 @@ async function cargarFiltroClientes() {
     }
 }
 
+// Ver detalles de factura
+let modalDetallesFactura;
+
+async function verDetallesFactura(id) {
+    try {
+        const response = await FacturaService.getById(id);
+
+        if (response.success && response.data) {
+            const factura = response.data;
+
+            // Cargar datos en el modal
+            document.getElementById('verNumeroFactura').textContent = factura.numeroFactura;
+            document.getElementById('verFechaEmision').textContent = formatDate(factura.fechaEmision);
+            document.getElementById('verCliente').textContent = `${factura.cliente?.nombre || 'N/A'} ${factura.cliente?.apellido || ''}`;
+            document.getElementById('verDocumento').textContent = factura.cliente?.documento || 'N/A';
+            document.getElementById('verDireccionCliente').textContent = factura.cliente?.direccion || 'N/A';
+            document.getElementById('verTelefonoCliente').textContent = factura.cliente?.telefono || 'N/A';
+            document.getElementById('verEstado').textContent = formatEstado(factura.estado);
+            document.getElementById('verFormaPago').textContent = factura.formaPago || 'N/A';
+            document.getElementById('verTimbrado').textContent = factura.timbrado || 'N/A';
+            document.getElementById('verFechaVencimiento').textContent = factura.fechaVencimiento ? formatDate(factura.fechaVencimiento) : 'N/A';
+            document.getElementById('verObservaciones').textContent = factura.observaciones || '-';
+
+            // Cargar items
+            const tbody = document.getElementById('verItemsFactura');
+            if (factura.items && factura.items.length > 0) {
+                tbody.innerHTML = factura.items.map(item => `
+                    <tr>
+                        <td>${item.descripcion}</td>
+                        <td class="text-end">${formatNumber(item.cantidad)}</td>
+                        <td class="text-end">${formatMoney(item.precioUnitario)}</td>
+                        <td class="text-end">${formatMoney(item.subtotal)}</td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">No hay items en esta factura</td>
+                    </tr>
+                `;
+            }
+
+            // Totales
+            document.getElementById('verSubtotal').textContent = formatMoney(factura.subtotal);
+            document.getElementById('verDescuento').textContent = formatMoney(factura.descuento);
+            document.getElementById('verIva').textContent = formatMoney(factura.iva);
+            document.getElementById('verTotal').textContent = formatMoney(factura.total);
+
+            modalDetallesFactura.show();
+        }
+    } catch (error) {
+        console.error('Error cargando detalles de factura:', error);
+        alert('Error al cargar los detalles de la factura');
+    }
+}
+
+// Exportar factura a PDF
+async function exportarPDF(id) {
+    try {
+        const response = await FacturaService.getById(id);
+
+        if (response.success && response.data) {
+            const factura = response.data;
+
+            // Crear ventana de impresión
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Factura ${factura.numeroFactura}</title>
+                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                    <style>
+                        @media print {
+                            .no-print { display: none; }
+                        }
+                        body { padding: 20px; }
+                        .factura-header { border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
+                        .factura-footer { border-top: 2px solid #000; margin-top: 20px; padding-top: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="factura-header">
+                            <div class="row">
+                                <div class="col-6">
+                                    <h2>FACTURA</h2>
+                                    <p><strong>Nº:</strong> ${factura.numeroFactura}</p>
+                                    <p><strong>Fecha:</strong> ${formatDate(factura.fechaEmision)}</p>
+                                    <p><strong>Timbrado:</strong> ${factura.timbrado || 'N/A'}</p>
+                                </div>
+                                <div class="col-6 text-end">
+                                    <h4>MULTISERVICIOS</h4>
+                                    <p>RUC: XXXXXXXXX-X</p>
+                                    <p>Dirección comercial</p>
+                                    <p>Tel: XXX-XXXX</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h5>Cliente</h5>
+                            <p><strong>Nombre:</strong> ${factura.cliente?.nombre || 'N/A'} ${factura.cliente?.apellido || ''}</p>
+                            <p><strong>Documento:</strong> ${factura.cliente?.documento || 'N/A'}</p>
+                            <p><strong>Dirección:</strong> ${factura.cliente?.direccion || 'N/A'}</p>
+                            <p><strong>Teléfono:</strong> ${factura.cliente?.telefono || 'N/A'}</p>
+                        </div>
+
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Descripción</th>
+                                    <th class="text-end">Cantidad</th>
+                                    <th class="text-end">Precio Unit.</th>
+                                    <th class="text-end">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${factura.items && factura.items.length > 0 ? factura.items.map(item => `
+                                    <tr>
+                                        <td>${item.descripcion}</td>
+                                        <td class="text-end">${formatNumber(item.cantidad)}</td>
+                                        <td class="text-end">${formatMoney(item.precioUnitario)}</td>
+                                        <td class="text-end">${formatMoney(item.subtotal)}</td>
+                                    </tr>
+                                `).join('') : '<tr><td colspan="4" class="text-center">No hay items</td></tr>'}
+                            </tbody>
+                        </table>
+
+                        <div class="factura-footer">
+                            <div class="row">
+                                <div class="col-6">
+                                    <p><strong>Forma de Pago:</strong> ${factura.formaPago || 'N/A'}</p>
+                                    <p><strong>Estado:</strong> ${formatEstado(factura.estado)}</p>
+                                    ${factura.observaciones ? `<p><strong>Observaciones:</strong> ${factura.observaciones}</p>` : ''}
+                                </div>
+                                <div class="col-6">
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <td class="text-end"><strong>Subtotal:</strong></td>
+                                            <td class="text-end">${formatMoney(factura.subtotal)}</td>
+                                        </tr>
+                                        ${factura.descuento > 0 ? `
+                                        <tr>
+                                            <td class="text-end"><strong>Descuento:</strong></td>
+                                            <td class="text-end">${formatMoney(factura.descuento)}</td>
+                                        </tr>
+                                        ` : ''}
+                                        <tr>
+                                            <td class="text-end"><strong>IVA (10%):</strong></td>
+                                            <td class="text-end">${formatMoney(factura.iva)}</td>
+                                        </tr>
+                                        <tr class="table-primary">
+                                            <td class="text-end"><strong>TOTAL:</strong></td>
+                                            <td class="text-end"><strong>${formatMoney(factura.total)}</strong></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-4 no-print">
+                            <button class="btn btn-primary" onclick="window.print()">
+                                <i class="fas fa-print"></i> Imprimir / Guardar como PDF
+                            </button>
+                            <button class="btn btn-secondary" onclick="window.close()">
+                                <i class="fas fa-times"></i> Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+    } catch (error) {
+        console.error('Error exportando PDF:', error);
+        alert('Error al exportar la factura a PDF');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     cargarFacturas();
     cargarFiltroClientes();
+
+    // Inicializar modal de detalles
+    const modalElement = document.getElementById('modalDetallesFactura');
+    if (modalElement) {
+        modalDetallesFactura = new bootstrap.Modal(modalElement);
+    }
 });

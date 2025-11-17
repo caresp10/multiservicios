@@ -391,6 +391,126 @@
         </div>
     </div>
 
+    <!-- Modal Ver Detalles de Factura -->
+    <div class="modal fade" id="modalDetallesFactura" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-invoice"></i> Detalles de la Factura
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Información General -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-info-circle"></i> Información General</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Nº Factura:</strong> <span id="verNumeroFactura"></span></p>
+                                    <p><strong>Fecha Emisión:</strong> <span id="verFechaEmision"></span></p>
+                                    <p><strong>Estado:</strong> <span id="verEstado"></span></p>
+                                    <p><strong>Forma de Pago:</strong> <span id="verFormaPago"></span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Timbrado:</strong> <span id="verTimbrado"></span></p>
+                                    <p><strong>Fecha Vencimiento:</strong> <span id="verFechaVencimiento"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Datos del Cliente -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-user"></i> Cliente</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Nombre:</strong> <span id="verCliente"></span></p>
+                                    <p><strong>Documento:</strong> <span id="verDocumento"></span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Dirección:</strong> <span id="verDireccionCliente"></span></p>
+                                    <p><strong>Teléfono:</strong> <span id="verTelefonoCliente"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Items de la Factura -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-list"></i> Items</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Descripción</th>
+                                            <th class="text-end">Cantidad</th>
+                                            <th class="text-end">Precio Unit.</th>
+                                            <th class="text-end">Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="verItemsFactura">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Totales -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-calculator"></i> Totales</h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm mb-0">
+                                <tr>
+                                    <td class="text-end"><strong>Subtotal:</strong></td>
+                                    <td class="text-end" id="verSubtotal"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-end"><strong>Descuento:</strong></td>
+                                    <td class="text-end" id="verDescuento"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-end"><strong>IVA (10%):</strong></td>
+                                    <td class="text-end" id="verIva"></td>
+                                </tr>
+                                <tr class="table-primary">
+                                    <td class="text-end"><h5 class="mb-0">TOTAL:</h5></td>
+                                    <td class="text-end"><h5 class="mb-0" id="verTotal"></h5></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Observaciones -->
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-comment"></i> Observaciones</h6>
+                        </div>
+                        <div class="card-body">
+                            <p id="verObservaciones" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/config.js"></script>
