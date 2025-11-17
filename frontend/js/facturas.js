@@ -611,24 +611,22 @@ async function guardarFactura() {
         return;
     }
 
-    // Obtener totales
-    const subtotalText = document.getElementById('totalSubtotal').textContent;
-    const ivaText = document.getElementById('totalIva').textContent;
-    const totalText = document.getElementById('totalFinal').textContent;
+    // CALCULAR TOTALES DIRECTAMENTE DESDE LOS ITEMS (no leer del DOM)
+    let subtotal = 0;
 
-    // Parsear montos (eliminar símbolo de moneda y formateo)
-    let subtotal = parseFloat(subtotalText.replace(/[₲.,]/g, ''));
-    let iva = parseFloat(ivaText.replace(/[₲.,]/g, ''));
-    let total = parseFloat(totalText.replace(/[₲.,]/g, ''));
+    // Sumar items del presupuesto
+    itemsPresupuesto.forEach(item => {
+        subtotal += parseFloat(item.subtotal) || 0;
+    });
 
-    // Validar que subtotal nunca sea NaN ni null
-    if (isNaN(subtotal) || subtotal === null) {
-        subtotal = 0;
-    }
-    // Validar que total nunca sea NaN ni null
-    if (isNaN(total) || total === null) {
-        total = 0;
-    }
+    // Sumar items adicionales
+    itemsAdicionales.forEach(item => {
+        subtotal += parseFloat(item.subtotal) || 0;
+    });
+
+    // Calcular IVA (10%) y total
+    const iva = subtotal * 0.10;
+    const total = subtotal + iva;
 
     // Combinar TODOS los items: presupuesto + adicionales
     // Convertir items del presupuesto al formato de FacturaItem
