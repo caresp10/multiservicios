@@ -13,7 +13,8 @@ if (user.rol !== 'ADMIN') {
 let facturas = [];
 let ordenesTerminadas = [];
 let ordenSeleccionada = null;
-let itemsAdicionales = [];
+let itemsPresupuesto = []; // Items del presupuesto original
+let itemsAdicionales = []; // Items adicionales agregados manualmente
 const modal = new bootstrap.Modal(document.getElementById('modalFactura'));
 
 document.getElementById('sidebarToggle')?.addEventListener('click', function() {
@@ -442,10 +443,12 @@ function mostrarDetalleOT(ot, datosFacturacion) {
     document.getElementById('detCostoManoObra').textContent = ot.costoManoObra ?
         formatMoney(ot.costoManoObra) : 'N/A';
 
-    // Items del Presupuesto
+    // Items del Presupuesto - GUARDAR EN VARIABLE GLOBAL
+    itemsPresupuesto = datosFacturacion.itemsPresupuesto || [];
+
     const tbodyPresupuesto = document.getElementById('detItemsPresupuesto');
-    if (datosFacturacion.itemsPresupuesto && datosFacturacion.itemsPresupuesto.length > 0) {
-        tbodyPresupuesto.innerHTML = datosFacturacion.itemsPresupuesto.map(item => `
+    if (itemsPresupuesto.length > 0) {
+        tbodyPresupuesto.innerHTML = itemsPresupuesto.map(item => `
             <tr>
                 <td>${item.descripcion}</td>
                 <td class="text-end">${formatNumber(item.cantidad)}</td>
@@ -617,6 +620,30 @@ async function guardarFactura() {
         total = 0;
     }
 
+    // Combinar TODOS los items: presupuesto + adicionales
+    // Convertir items del presupuesto al formato de FacturaItem
+    const todosLosItems = [];
+
+    // Agregar items del presupuesto
+    itemsPresupuesto.forEach(item => {
+        todosLosItems.push({
+            descripcion: item.descripcion,
+            cantidad: item.cantidad,
+            precioUnitario: item.precioUnitario,
+            subtotal: item.subtotal
+        });
+    });
+
+    // Agregar items adicionales
+    itemsAdicionales.forEach(item => {
+        todosLosItems.push({
+            descripcion: item.descripcion,
+            cantidad: item.cantidad,
+            precioUnitario: item.precioUnitario,
+            subtotal: item.subtotal
+        });
+    });
+
     const facturaData = {
         cliente: {
             idCliente: parseInt(document.getElementById('idCliente').value)
@@ -636,7 +663,7 @@ async function guardarFactura() {
         timbrado: document.getElementById('timbrado').value || null,
         fechaVencimiento: document.getElementById('fechaVencimiento').value || null,
         observaciones: document.getElementById('observaciones').value || null,
-        itemsAdicionales: itemsAdicionales
+        items: todosLosItems  // ← CAMBIADO: Ahora se envían TODOS los items
     };
 
     try {
