@@ -2,6 +2,7 @@ package com.empresa.multiservices.model;
 
 import com.empresa.multiservices.model.enums.EstadoFactura;
 import com.empresa.multiservices.model.enums.FormaPago;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -30,17 +31,20 @@ public class Factura {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_pedido", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Pedido pedido;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_ot")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private OrdenTrabajo ot;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_presupuesto")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Presupuesto presupuesto;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
+
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_cliente", nullable = false)
     private Cliente cliente;
     
