@@ -96,6 +96,189 @@ function renderFacturas(data) {
             </td>
         </tr>
     `).join('');
+// Vista de factura por id
+window.verFacturaPorId = async function(id) {
+    try {
+        const response = await FacturaService.getById(id);
+        if (response.success && response.data) {
+            const factura = response.data;
+            document.getElementById('vistaFacturaBody').innerHTML = renderFacturaHTML(factura);
+            const modalVista = new bootstrap.Modal(document.getElementById('modalVistaFactura'));
+            modalVista.show();
+        } else {
+            alert('No se pudo cargar la factura');
+        }
+    } catch (error) {
+        alert('Error al cargar la factura');
+    }
+}
+
+function renderFacturaHTML(factura) {
+    return `
+        <div class="mb-3">
+            <h4>Factura Nº ${factura.numeroFactura}</h4>
+            <p><strong>Cliente:</strong> ${factura.cliente?.nombre || ''} ${factura.cliente?.apellido || ''}</p>
+            <p><strong>Fecha de emisión:</strong> ${formatDate(factura.fechaEmision)}</p>
+            <p><strong>Estado:</strong> ${formatEstado(factura.estado)}</p>
+            <p><strong>Forma de pago:</strong> ${factura.formaPago || 'N/A'}</p>
+        </div>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Descripción</th>
+                    <th>Cantidad</th>
+                    <th>Precio Unitario</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${(factura.items || []).map(item => `
+                    <tr>
+                        <td>${item.descripcion}</td>
+                        <td>${item.cantidad}</td>
+                        <td>${formatMoney(item.precioUnitario)}</td>
+                        <td>${formatMoney(item.subtotal)}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        <div class="text-end">
+            <strong>Subtotal:</strong> ${formatMoney(factura.subtotal)}<br>
+            <strong>IVA:</strong> ${formatMoney(factura.iva)}<br>
+            <strong>Total:</strong> ${formatMoney(factura.total)}
+        </div>
+        <div class="mt-3 text-end">
+            <button class="btn btn-warning" onclick="window.editarFactura(${factura.idFactura})">
+                <i class="fas fa-edit"></i> Editar factura
+            </button>
+        </div>
+    `;
+// Modal de edición de factura
+window.editarFactura = async function(id) {
+    try {
+        const response = await FacturaService.getById(id);
+        if (response.success && response.data) {
+            const factura = response.data;
+            // Renderiza un modal simple para editar estado y forma de pago
+            const modalDiv = document.createElement('div');
+            modalDiv.className = 'modal fade';
+            modalDiv.id = 'modalEditarFactura';
+            modalDiv.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Editar Factura</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="formEditarFactura">
+                                <div class="mb-3">
+                                    <label class="form-label">Estado</label>
+                                    <select class="form-select" id="editEstado">
+                                        <option value="PENDIENTE" ${factura.estado === 'PENDIENTE' ? 'selected' : ''}>Pendiente</option>
+                                        <option value="PAGADA" ${factura.estado === 'PAGADA' ? 'selected' : ''}>Pagada</option>
+                                        <option value="VENCIDA" ${factura.estado === 'VENCIDA' ? 'selected' : ''}>Vencida</option>
+                                        <option value="ANULADA" ${factura.estado === 'ANULADA' ? 'selected' : ''}>Anulada</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Forma de pago</label>
+                                    <select class="form-select" id="editFormaPago">
+                                        <option value="EFECTIVO" ${factura.formaPago === 'EFECTIVO' ? 'selected' : ''}>Efectivo</option>
+                                        <option value="TARJETA" ${factura.formaPago === 'TARJETA' ? 'selected' : ''}>Tarjeta</option>
+                                        <option value="TRANSFERENCIA" ${factura.formaPago === 'TRANSFERENCIA' ? 'selected' : ''}>Transferencia</option>
+                                    </select>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" id="btnGuardarEdicion">Guardar cambios</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modalDiv);
+            const modalEditar = new bootstrap.Modal(modalDiv);
+            modalEditar.show();
+            document.getElementById('btnGuardarEdicion').onclick = async function() {
+                const nuevoEstado = document.getElementById('editEstado').value;
+                const nuevaFormaPago = document.getElementById('editFormaPago').value;
+                // Actualiza la factura
+                const update = {
+                    ...factura,
+                    estado: nuevoEstado,
+                    formaPago: nuevaFormaPago
+                };
+                const res = await FacturaService.update(id, update);
+                if (res.success) {
+                    alert('Factura actualizada');
+                    modalEditar.hide();
+                    document.body.removeChild(modalDiv);
+                    await cargarFacturas();
+                } else {
+                    alert('Error al actualizar factura');
+                }
+            };
+            modalDiv.addEventListener('hidden.bs.modal', function () {
+                document.body.removeChild(modalDiv);
+            });
+        }
+    } catch (error) {
+        alert('Error al cargar factura para editar');
+    }
+}
+    // Garantiza la exportación global
+    window.editarFactura = window.editarFactura;
+}
+
+// Exportar factura a PDF
+window.exportarFacturaPDF = async function(id) {
+    try {
+        const response = await FacturaService.getById(id);
+        if (response.success && response.data) {
+            const factura = response.data;
+            // Render HTML en un div oculto y con estilos para PDF
+            const tempDiv = document.createElement('div');
+            tempDiv.style.position = 'fixed';
+            tempDiv.style.left = '-9999px';
+            tempDiv.style.top = '0';
+            tempDiv.style.width = '800px';
+            tempDiv.style.background = '#fff';
+            tempDiv.innerHTML = renderFacturaHTML(factura);
+            document.body.appendChild(tempDiv);
+            if (window.jsPDF) {
+                const doc = new window.jsPDF({ unit: 'px', format: 'a4' });
+                await doc.html(tempDiv, {
+                    callback: function (doc) {
+                        doc.save('factura.pdf');
+                        document.body.removeChild(tempDiv);
+                    },
+                    x: 10,
+                    y: 10,
+                    html2canvas: { scale: 1.2 }
+                });
+            } else {
+                // Solo imprime el div de la factura
+                const printWindow = window.open('', '', 'width=800,height=600');
+                printWindow.document.write('<html><head><title>Factura</title>');
+                printWindow.document.write('<link rel="stylesheet" href="/css/bootstrap.min.css">');
+                printWindow.document.write('</head><body >');
+                printWindow.document.write(tempDiv.innerHTML);
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+                printWindow.focus();
+                printWindow.print();
+                printWindow.close();
+                document.body.removeChild(tempDiv);
+            }
+        } else {
+            alert('No se pudo cargar la factura para exportar');
+        }
+    } catch (error) {
+        alert('Error al exportar la factura');
+    }
+}
 }
 
 document.getElementById('searchInput').addEventListener('input', aplicarFiltros);
@@ -421,9 +604,18 @@ async function guardarFactura() {
     const totalText = document.getElementById('totalFinal').textContent;
 
     // Parsear montos (eliminar símbolo de moneda y formateo)
-    const subtotal = parseFloat(subtotalText.replace(/[₲.,]/g, ''));
-    const iva = parseFloat(ivaText.replace(/[₲.,]/g, ''));
-    const total = parseFloat(totalText.replace(/[₲.,]/g, ''));
+    let subtotal = parseFloat(subtotalText.replace(/[₲.,]/g, ''));
+    let iva = parseFloat(ivaText.replace(/[₲.,]/g, ''));
+    let total = parseFloat(totalText.replace(/[₲.,]/g, ''));
+
+    // Validar que subtotal nunca sea NaN ni null
+    if (isNaN(subtotal) || subtotal === null) {
+        subtotal = 0;
+    }
+    // Validar que total nunca sea NaN ni null
+    if (isNaN(total) || total === null) {
+        total = 0;
+    }
 
     const facturaData = {
         cliente: {
@@ -463,9 +655,7 @@ async function guardarFactura() {
     }
 }
 
-async function editarFactura(id) {
-    alert('La edición de facturas no está disponible en este flujo. Para modificar una factura, debe eliminarla y generarla nuevamente.');
-}
+// Eliminar función antigua que bloquea la edición. La edición ahora se realiza con window.editarFactura (modal).
 
 async function eliminarFactura(id) {
     if (!confirm('¿Está seguro que desea eliminar esta factura? NOTA: Esto NO revertirá el estado de la OT y Pedido.')) {
