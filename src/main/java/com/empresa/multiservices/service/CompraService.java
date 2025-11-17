@@ -33,6 +33,11 @@ public class CompraService {
             throw new IllegalArgumentException("Ya existe una compra con el número: " + compra.getNumeroCompra());
         }
 
+        // Validar que haya detalles
+        if (compra.getDetalles() == null || compra.getDetalles().isEmpty()) {
+            throw new IllegalArgumentException("La compra debe tener al menos un detalle");
+        }
+
         // Validar proveedor
         if (compra.getProveedor() == null || compra.getProveedor().getIdProveedor() == null) {
             throw new IllegalArgumentException("Debe especificar un proveedor");
@@ -55,22 +60,9 @@ public class CompraService {
         }
 
         // Guardar compra
-        return compraRepository.save(compra);
-    }
+        Compra nuevaCompra = compraRepository.save(compra);
 
-    /**
-     * Crea una compra y actualiza el stock de los repuestos automáticamente
-     */
-    public Compra crearYCompletar(Compra compra) {
-        // Validar que haya detalles
-        if (compra.getDetalles() == null || compra.getDetalles().isEmpty()) {
-            throw new IllegalArgumentException("La compra debe tener al menos un detalle");
-        }
-
-        // Crear la compra
-        Compra nuevaCompra = crear(compra);
-
-        // Actualizar stock y precios de todos los repuestos
+        // Actualizar stock y precios de todos los repuestos automáticamente
         for (DetalleCompra detalle : nuevaCompra.getDetalles()) {
             // Incrementar stock
             repuestoService.incrementarStock(

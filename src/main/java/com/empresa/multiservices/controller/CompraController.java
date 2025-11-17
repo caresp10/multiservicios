@@ -66,8 +66,8 @@ public class CompraController {
                 compra.setDetalles(detalles);
             }
 
-            // Crear y completar automáticamente (actualizar stock)
-            Compra nuevaCompra = compraService.crearYCompletar(compra);
+            // Crear compra (automáticamente actualiza el stock)
+            Compra nuevaCompra = compraService.crear(compra);
 
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success("Compra registrada exitosamente. Stock actualizado.", nuevaCompra));
