@@ -27,6 +27,16 @@ function logout() {
     }
 }
 
+// Función para sanitizar strings y evitar problemas con JSON
+function sanitizeString(str) {
+    if (!str) return '';
+    // Convertir a string y eliminar caracteres problemáticos
+    return String(str)
+        .replace(/[\n\r\t]/g, ' ')  // Reemplazar saltos de línea y tabs con espacios
+        .replace(/"/g, "'")          // Reemplazar comillas dobles con simples
+        .trim();
+}
+
 // Cargar facturas existentes
 async function cargarFacturas() {
     const table = document.getElementById('facturasTable');
@@ -628,7 +638,7 @@ async function guardarFactura() {
     itemsPresupuesto.forEach(item => {
         todosLosItems.push({
             tipoItem: 'SERVICIO',
-            descripcion: String(item.descripcion || ''),
+            descripcion: sanitizeString(item.descripcion),
             cantidad: parseFloat(item.cantidad) || 1,
             precioUnitario: parseFloat(item.precioUnitario) || 0,
             subtotal: parseFloat(item.subtotal) || 0
@@ -639,7 +649,7 @@ async function guardarFactura() {
     itemsAdicionales.forEach(item => {
         todosLosItems.push({
             tipoItem: 'SERVICIO',
-            descripcion: String(item.descripcion || ''),
+            descripcion: sanitizeString(item.descripcion),
             cantidad: parseFloat(item.cantidad) || 1,
             precioUnitario: parseFloat(item.precioUnitario) || 0,
             subtotal: parseFloat(item.subtotal) || 0
@@ -662,11 +672,21 @@ async function guardarFactura() {
         descuento: parseFloat(document.getElementById('descuento').value) || 0,
         iva: iva,
         total: total,
-        timbrado: document.getElementById('timbrado').value || null,
+        timbrado: sanitizeString(document.getElementById('timbrado').value) || null,
         fechaVencimiento: document.getElementById('fechaVencimiento').value || null,
-        observaciones: document.getElementById('observaciones').value || null,
+        observaciones: sanitizeString(document.getElementById('observaciones').value) || null,
         items: todosLosItems  // ← CAMBIADO: Ahora se envían TODOS los items
     };
+
+    // Validar que el JSON se puede serializar antes de enviar
+    try {
+        JSON.stringify(facturaData);
+    } catch (jsonError) {
+        console.error('Error al serializar facturaData:', jsonError);
+        console.error('Datos problemáticos:', facturaData);
+        alert('Error: Los datos de la factura contienen caracteres inválidos. Por favor revise los campos de texto.');
+        return;
+    }
 
     try {
         const response = await FacturaService.create(facturaData);
