@@ -27,7 +27,12 @@ public class FacturaService {
 
     @Transactional(readOnly = true)
     public List<Factura> listarTodas() {
-        return facturaRepository.findAll();
+        List<Factura> facturas = facturaRepository.findAll();
+        // Forzar la carga de los items para cada factura (evitar lazy loading)
+        for (Factura f : facturas) {
+            f.getItems().size();
+        }
+        return facturas;
     }
 
     @Transactional(readOnly = true)
@@ -67,6 +72,11 @@ public class FacturaService {
         // El pedido debe existir (viene de la OT o es requerido)
         if (factura.getPedido() == null) {
             throw new IllegalArgumentException("La factura debe estar asociada a un pedido (a través de una orden de trabajo)");
+        }
+
+        // Validar que subtotal no sea null
+        if (factura.getSubtotal() == null) {
+            factura.setSubtotal(java.math.BigDecimal.ZERO);
         }
 
         Factura saved = facturaRepository.save(factura);

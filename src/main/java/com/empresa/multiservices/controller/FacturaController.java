@@ -37,6 +37,8 @@ public class FacturaController {
     public ResponseEntity<ApiResponse> obtenerPorId(@PathVariable Long id) {
         try {
             Factura factura = facturaService.obtenerPorId(id);
+            // Forzar la carga de los items (evitar lazy loading en la serialización)
+            factura.getItems().size();
             return ResponseEntity.ok(ApiResponse.success("Factura encontrada", factura));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
