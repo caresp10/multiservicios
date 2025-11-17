@@ -59,6 +59,9 @@ public class CompraService {
             }
         }
 
+        // Recalcular totales antes de guardar
+        compra.recalcularTotales();
+
         // Guardar compra
         Compra nuevaCompra = compraRepository.save(compra);
 
