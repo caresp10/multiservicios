@@ -628,10 +628,10 @@ async function guardarFactura() {
     itemsPresupuesto.forEach(item => {
         todosLosItems.push({
             tipoItem: 'SERVICIO',
-            descripcion: item.descripcion,
-            cantidad: item.cantidad,
-            precioUnitario: item.precioUnitario,
-            subtotal: item.subtotal
+            descripcion: String(item.descripcion || ''),
+            cantidad: parseFloat(item.cantidad) || 1,
+            precioUnitario: parseFloat(item.precioUnitario) || 0,
+            subtotal: parseFloat(item.subtotal) || 0
         });
     });
 
@@ -639,10 +639,10 @@ async function guardarFactura() {
     itemsAdicionales.forEach(item => {
         todosLosItems.push({
             tipoItem: 'SERVICIO',
-            descripcion: item.descripcion,
-            cantidad: item.cantidad,
-            precioUnitario: item.precioUnitario,
-            subtotal: item.subtotal
+            descripcion: String(item.descripcion || ''),
+            cantidad: parseFloat(item.cantidad) || 1,
+            precioUnitario: parseFloat(item.precioUnitario) || 0,
+            subtotal: parseFloat(item.subtotal) || 0
         });
     });
 
