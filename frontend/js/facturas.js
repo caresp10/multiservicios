@@ -688,6 +688,17 @@ async function guardarFactura() {
         return;
     }
 
+    // LOG: Ver qué se está enviando al backend
+    console.log('=== DATOS DE FACTURA A ENVIAR ===');
+    console.log('Items del presupuesto:', itemsPresupuesto.length);
+    console.log('Items adicionales:', itemsAdicionales.length);
+    console.log('Total items a enviar:', todosLosItems.length);
+    console.log('Items:', todosLosItems);
+    console.log('Subtotal:', facturaData.subtotal);
+    console.log('IVA:', facturaData.iva);
+    console.log('Total:', facturaData.total);
+    console.log('FacturaData completo:', facturaData);
+
     try {
         const response = await FacturaService.create(facturaData);
 

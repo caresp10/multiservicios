@@ -43,6 +43,18 @@ public class FacturaService {
 
     @Transactional
     public Factura crear(Factura factura) {
+        // LOG: Ver qué llega al backend
+        System.out.println("=== FACTURA RECIBIDA EN BACKEND ===");
+        System.out.println("Items recibidos: " + (factura.getItems() != null ? factura.getItems().size() : "null"));
+        System.out.println("Subtotal: " + factura.getSubtotal());
+        System.out.println("IVA: " + factura.getIva());
+        System.out.println("Total: " + factura.getTotal());
+        if (factura.getItems() != null) {
+            factura.getItems().forEach(item -> {
+                System.out.println("  - Item: " + item.getDescripcion() + " | Cantidad: " + item.getCantidad() + " | Precio: " + item.getPrecioUnitario());
+            });
+        }
+
         // Validar cliente
         if (factura.getCliente() == null || factura.getCliente().getIdCliente() == null) {
             throw new IllegalArgumentException("El cliente es obligatorio");
