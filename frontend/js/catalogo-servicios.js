@@ -350,12 +350,18 @@ async function verHistorico(idServicio) {
 // Formatear unidad de medida
 function formatUnidadMedida(unidad) {
     const unidades = {
+        'SERVICIO': 'Servicio',
         'UNIDAD': 'Unidad',
         'HORA': 'Hora',
         'METRO': 'Metro',
         'METRO_CUADRADO': 'm²',
         'DIA': 'Día',
-        'VISITA': 'Visita'
+        'VISITA': 'Visita',
+        'KILO': 'Kilo',
+        'LITRO': 'Litro',
+        'CAJA': 'Caja',
+        'ROLLO': 'Rollo',
+        'PAR': 'Par'
     };
     return unidades[unidad] || unidad;
 }

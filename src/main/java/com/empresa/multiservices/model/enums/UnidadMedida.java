@@ -1,6 +1,7 @@
 package com.empresa.multiservices.model.enums;
 
 public enum UnidadMedida {
+    SERVICIO,
     UNIDAD,
     HORA,
     METRO,
