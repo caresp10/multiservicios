@@ -3,12 +3,9 @@ package com.empresa.multiservices.service;
 import com.empresa.multiservices.dto.request.PresupuestoItemRequest;
 import com.empresa.multiservices.dto.request.PresupuestoRequest;
 import com.empresa.multiservices.exception.ResourceNotFoundException;
-import com.empresa.multiservices.model.Pedido;
-import com.empresa.multiservices.model.Presupuesto;
-import com.empresa.multiservices.model.PresupuestoItem;
+import com.empresa.multiservices.model.*;
 import com.empresa.multiservices.model.enums.EstadoPresupuesto;
-import com.empresa.multiservices.repository.PedidoRepository;
-import com.empresa.multiservices.repository.PresupuestoRepository;
+import com.empresa.multiservices.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +25,12 @@ public class PresupuestoService {
 
     @Autowired
     private PedidoRepository pedidoRepository;
+
+    @Autowired
+    private ServicioCatalogoRepository servicioCatalogoRepository;
+
+    @Autowired
+    private RepuestoRepository repuestoRepository;
 
     public Presupuesto crear(PresupuestoRequest request) {
         // Validar que existe el pedido
@@ -71,14 +74,30 @@ public class PresupuestoService {
         for (PresupuestoItemRequest itemRequest : request.getItems()) {
             BigDecimal subtotalItem = itemRequest.getCantidad().multiply(itemRequest.getPrecioUnitario());
 
-            PresupuestoItem item = PresupuestoItem.builder()
+            // Construir el item con los campos básicos
+            PresupuestoItem.PresupuestoItemBuilder itemBuilder = PresupuestoItem.builder()
                     .presupuesto(presupuesto)
+                    .tipoItem(itemRequest.getTipoItem() != null ? itemRequest.getTipoItem() : PresupuestoItem.TipoItem.MANUAL)
                     .descripcion(itemRequest.getDescripcion())
                     .cantidad(itemRequest.getCantidad())
                     .precioUnitario(itemRequest.getPrecioUnitario())
-                    .subtotal(subtotalItem)
-                    .build();
+                    .subtotal(subtotalItem);
 
+            // Si es un servicio del catálogo, cargar la referencia
+            if (itemRequest.getIdServicio() != null) {
+                ServicioCatalogo servicio = servicioCatalogoRepository.findById(itemRequest.getIdServicio())
+                        .orElseThrow(() -> new ResourceNotFoundException("Servicio no encontrado con ID: " + itemRequest.getIdServicio()));
+                itemBuilder.servicio(servicio);
+            }
+
+            // Si es un repuesto, cargar la referencia
+            if (itemRequest.getIdRepuesto() != null) {
+                Repuesto repuesto = repuestoRepository.findById(itemRequest.getIdRepuesto())
+                        .orElseThrow(() -> new ResourceNotFoundException("Repuesto no encontrado con ID: " + itemRequest.getIdRepuesto()));
+                itemBuilder.repuesto(repuesto);
+            }
+
+            PresupuestoItem item = itemBuilder.build();
             presupuesto.getItems().add(item);
             subtotalCalculado = subtotalCalculado.add(subtotalItem);
         }
@@ -196,14 +215,30 @@ public class PresupuestoService {
         for (PresupuestoItemRequest itemRequest : request.getItems()) {
             BigDecimal subtotalItem = itemRequest.getCantidad().multiply(itemRequest.getPrecioUnitario());
 
-            PresupuestoItem item = PresupuestoItem.builder()
+            // Construir el item con los campos básicos
+            PresupuestoItem.PresupuestoItemBuilder itemBuilder = PresupuestoItem.builder()
                     .presupuesto(presupuesto)
+                    .tipoItem(itemRequest.getTipoItem() != null ? itemRequest.getTipoItem() : PresupuestoItem.TipoItem.MANUAL)
                     .descripcion(itemRequest.getDescripcion())
                     .cantidad(itemRequest.getCantidad())
                     .precioUnitario(itemRequest.getPrecioUnitario())
-                    .subtotal(subtotalItem)
-                    .build();
+                    .subtotal(subtotalItem);
 
+            // Si es un servicio del catálogo, cargar la referencia
+            if (itemRequest.getIdServicio() != null) {
+                ServicioCatalogo servicio = servicioCatalogoRepository.findById(itemRequest.getIdServicio())
+                        .orElseThrow(() -> new ResourceNotFoundException("Servicio no encontrado con ID: " + itemRequest.getIdServicio()));
+                itemBuilder.servicio(servicio);
+            }
+
+            // Si es un repuesto, cargar la referencia
+            if (itemRequest.getIdRepuesto() != null) {
+                Repuesto repuesto = repuestoRepository.findById(itemRequest.getIdRepuesto())
+                        .orElseThrow(() -> new ResourceNotFoundException("Repuesto no encontrado con ID: " + itemRequest.getIdRepuesto()));
+                itemBuilder.repuesto(repuesto);
+            }
+
+            PresupuestoItem item = itemBuilder.build();
             presupuesto.getItems().add(item);
             subtotalCalculado = subtotalCalculado.add(subtotalItem);
         }

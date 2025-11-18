@@ -30,7 +30,7 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- ============================================
--- 2. Agregar columna id_servicio
+-- 2. Agregar columna id_servicio (SIN constraint)
 -- ============================================
 
 SET @column_exists = (
@@ -42,10 +42,7 @@ SET @column_exists = (
 );
 
 SET @sql = IF(@column_exists = 0,
-    'ALTER TABLE presupuesto_items
-     ADD COLUMN id_servicio BIGINT NULL AFTER tipo_item,
-     ADD CONSTRAINT fk_presupuesto_item_servicio
-         FOREIGN KEY (id_servicio) REFERENCES servicios_catalogo(id_servicio) ON DELETE RESTRICT',
+    'ALTER TABLE presupuesto_items ADD COLUMN id_servicio BIGINT NULL AFTER tipo_item',
     'SELECT ''Columna id_servicio ya existe'' AS mensaje'
 );
 
@@ -54,7 +51,7 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- ============================================
--- 3. Agregar columna id_repuesto
+-- 3. Agregar columna id_repuesto (SIN constraint)
 -- ============================================
 
 SET @column_exists = (
@@ -66,10 +63,7 @@ SET @column_exists = (
 );
 
 SET @sql = IF(@column_exists = 0,
-    'ALTER TABLE presupuesto_items
-     ADD COLUMN id_repuesto BIGINT NULL AFTER id_servicio,
-     ADD CONSTRAINT fk_presupuesto_item_repuesto
-         FOREIGN KEY (id_repuesto) REFERENCES repuestos(id_repuesto) ON DELETE RESTRICT',
+    'ALTER TABLE presupuesto_items ADD COLUMN id_repuesto BIGINT NULL AFTER id_servicio',
     'SELECT ''Columna id_repuesto ya existe'' AS mensaje'
 );
 
@@ -78,7 +72,53 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- ============================================
--- 4. Agregar índices para mejorar performance
+-- 4. Agregar constraint para id_servicio
+-- ============================================
+
+SET @constraint_exists = (
+    SELECT COUNT(*)
+    FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'presupuesto_items'
+    AND CONSTRAINT_NAME = 'fk_presupuesto_item_servicio'
+);
+
+SET @sql = IF(@constraint_exists = 0,
+    'ALTER TABLE presupuesto_items
+     ADD CONSTRAINT fk_presupuesto_item_servicio
+         FOREIGN KEY (id_servicio) REFERENCES servicios_catalogo(id_servicio) ON DELETE RESTRICT',
+    'SELECT ''Constraint fk_presupuesto_item_servicio ya existe'' AS mensaje'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- ============================================
+-- 5. Agregar constraint para id_repuesto
+-- ============================================
+
+SET @constraint_exists = (
+    SELECT COUNT(*)
+    FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'presupuesto_items'
+    AND CONSTRAINT_NAME = 'fk_presupuesto_item_repuesto'
+);
+
+SET @sql = IF(@constraint_exists = 0,
+    'ALTER TABLE presupuesto_items
+     ADD CONSTRAINT fk_presupuesto_item_repuesto
+         FOREIGN KEY (id_repuesto) REFERENCES repuestos(id_repuesto) ON DELETE RESTRICT',
+    'SELECT ''Constraint fk_presupuesto_item_repuesto ya existe'' AS mensaje'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- ============================================
+-- 6. Agregar índices para mejorar performance
 -- ============================================
 
 SET @index_exists = (
@@ -99,7 +139,7 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- ============================================
--- 5. Migrar datos existentes
+-- 7. Migrar datos existentes
 -- ============================================
 
 -- Todos los items existentes se marcan como MANUAL (ingresados manualmente)
