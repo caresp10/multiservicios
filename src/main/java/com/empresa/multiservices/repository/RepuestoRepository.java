@@ -17,14 +17,16 @@ public interface RepuestoRepository extends JpaRepository<Repuesto, Long> {
 
     List<Repuesto> findByNombreContainingIgnoreCaseOrCodigoContainingIgnoreCase(String nombre, String codigo);
 
-    List<Repuesto> findByCategoria(String categoria);
+    List<Repuesto> findByCategoriaIdCategoria(Long idCategoria);
 
     List<Repuesto> findByMarca(String marca);
 
     boolean existsByCodigo(String codigo);
 
+    boolean existsByCodigoAndIdRepuestoNot(String codigo, Long idRepuesto);
+
     // Repuestos con stock bajo (menor o igual al stock mínimo)
-    @Query("SELECT r FROM Repuesto r WHERE r.stockActual <= r.stockMinimo AND r.activo = true")
+    @Query("SELECT r FROM Repuesto r WHERE r.stockActual <= r.stockMinimo AND r.activo = true ORDER BY r.stockActual ASC")
     List<Repuesto> findRepuestosConStockBajo();
 
     // Repuestos sin stock

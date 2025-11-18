@@ -1,5 +1,7 @@
 package com.empresa.multiservices.model;
 
+import com.empresa.multiservices.model.enums.UnidadMedida;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
@@ -29,34 +31,30 @@ public class Repuesto {
     private String codigo;
 
     @NotBlank(message = "El nombre es obligatorio")
-    @Column(nullable = false, length = 150)
+    @Column(nullable = false, length = 100)
     private String nombre;
 
     @Column(columnDefinition = "TEXT")
     private String descripcion;
 
-    @Column(length = 50)
-    private String marca;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_categoria")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private CategoriaServicio categoria;
 
-    @Column(length = 50)
-    private String modelo;
-
-    @Column(length = 50)
-    private String categoria;
-
-    @Column(name = "unidad_medida", length = 20)
+    @DecimalMin(value = "0.0", message = "El precio de costo debe ser mayor o igual a 0")
+    @Column(name = "precio_costo", precision = 12, scale = 2, nullable = false)
     @Builder.Default
-    private String unidadMedida = "Unidad";
-
-    @DecimalMin(value = "0.0", message = "El precio de compra debe ser mayor o igual a 0")
-    @Column(name = "precio_compra", precision = 10, scale = 2)
-    @Builder.Default
-    private BigDecimal precioCompra = BigDecimal.ZERO;
+    private BigDecimal precioCosto = BigDecimal.ZERO;
 
     @DecimalMin(value = "0.0", message = "El precio de venta debe ser mayor o igual a 0")
-    @Column(name = "precio_venta", precision = 10, scale = 2)
+    @Column(name = "precio_venta", precision = 12, scale = 2, nullable = false)
     @Builder.Default
     private BigDecimal precioVenta = BigDecimal.ZERO;
+
+    // Margen calculado automáticamente por la BD
+    @Column(name = "margen_ganancia", precision = 5, scale = 2, insertable = false, updatable = false)
+    private BigDecimal margenGanancia;
 
     @Min(value = 0, message = "El stock actual no puede ser negativo")
     @Column(name = "stock_actual", nullable = false)
@@ -65,29 +63,52 @@ public class Repuesto {
 
     @Column(name = "stock_minimo")
     @Builder.Default
-    private Integer stockMinimo = 5;
+    private Integer stockMinimo = 10;
 
     @Column(name = "stock_maximo")
     @Builder.Default
     private Integer stockMaximo = 100;
 
-    @Column(length = 50)
+    @Column(name = "punto_reorden")
+    private Integer puntoReorden;
+
+    @Column(length = 100)
     private String ubicacion;
+
+    @Column(length = 100)
+    private String proveedor;
+
+    @Column(name = "telefono_proveedor", length = 20)
+    private String telefonoProveedor;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "unidad_medida", length = 20)
+    @Builder.Default
+    private UnidadMedida unidadMedida = UnidadMedida.UNIDAD;
+
+    @Column(length = 50)
+    private String marca;
+
+    @Column(length = 50)
+    private String modelo;
 
     @Column(nullable = false)
     @Builder.Default
     private Boolean activo = true;
 
     @CreationTimestamp
-    @Column(name = "fecha_registro", updatable = false)
-    private LocalDateTime fechaRegistro;
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(name = "fecha_actualizacion")
-    private LocalDateTime fechaActualizacion;
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     // Métodos auxiliares para control de stock
     public boolean necesitaReabastecimiento() {
+        if (puntoReorden != null) {
+            return stockActual <= puntoReorden;
+        }
         return stockActual <= stockMinimo;
     }
 
@@ -104,5 +125,9 @@ public class Repuesto {
             throw new IllegalArgumentException("No hay suficiente stock disponible");
         }
         this.stockActual -= cantidad;
+    }
+
+    public boolean esStockBajo() {
+        return stockActual < stockMinimo;
     }
 }
