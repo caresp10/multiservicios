@@ -8,10 +8,16 @@
 -- ADVERTENCIA: Este script ELIMINARÁ todos los datos existentes en la tabla repuestos
 -- Solo ejecutar si estás seguro de que no hay datos importantes
 
+-- Paso 1: Eliminar foreign keys que apuntan a repuestos
+SET FOREIGN_KEY_CHECKS = 0;
+
 -- Eliminar tabla repuestos existente
 DROP TABLE IF EXISTS repuestos;
 
--- Crear tabla repuestos desde cero con estructura completa
+-- Reactivar foreign key checks
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- Paso 2: Crear tabla repuestos desde cero con estructura completa
 CREATE TABLE repuestos (
     id_repuesto BIGINT PRIMARY KEY AUTO_INCREMENT,
     codigo VARCHAR(50) UNIQUE NOT NULL,
@@ -45,7 +51,7 @@ CREATE TABLE repuestos (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Inventario de repuestos con control de stock';
 
--- Insertar repuestos de ejemplo
+-- Paso 3: Insertar repuestos de ejemplo
 INSERT INTO repuestos (codigo, nombre, descripcion, id_categoria, precio_costo, precio_venta, stock_actual, stock_minimo, stock_maximo, unidad_medida, proveedor, marca) VALUES
 ('REP-ELEC-001', 'Llave termomagnética 10A', 'Llave termomagnética 10 Amperios', 1, 35000, 55000, 25, 10, 50, 'UNIDAD', 'Distribuidora Eléctrica SA', 'Schneider'),
 ('REP-ELEC-002', 'Llave termomagnética 20A', 'Llave termomagnética 20 Amperios', 1, 45000, 70000, 20, 10, 50, 'UNIDAD', 'Distribuidora Eléctrica SA', 'Schneider'),
@@ -55,6 +61,20 @@ INSERT INTO repuestos (codigo, nombre, descripcion, id_categoria, precio_costo, 
 ('REP-ELEC-006', 'Cable 2.5mm', 'Cable eléctrico 2.5mm por metro', 1, 3500, 6000, 500, 100, 1000, 'METRO', 'Distribuidora Eléctrica SA', 'Prysmian'),
 ('REP-ELEC-007', 'Cable 4mm', 'Cable eléctrico 4mm por metro', 1, 5500, 9000, 300, 100, 800, 'METRO', 'Distribuidora Eléctrica SA', 'Prysmian'),
 ('REP-ELEC-008', 'Caja de paso PVC', 'Caja de paso cuadrada PVC', 1, 8000, 15000, 40, 15, 80, 'UNIDAD', 'Distribuidora Eléctrica SA', 'Tigre');
+
+-- Paso 4: Recrear foreign key en detalle_compras (si existe)
+SET @query = (
+    SELECT IF(
+        COUNT(*) > 0,
+        'ALTER TABLE detalle_compras ADD CONSTRAINT fk_detalle_compra_repuesto FOREIGN KEY (id_repuesto) REFERENCES repuestos(id_repuesto) ON DELETE RESTRICT',
+        'SELECT "Table detalle_compras does not exist" AS message'
+    ) FROM information_schema.TABLES
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'detalle_compras'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- =====================================================
 -- FIN DEL SCRIPT
