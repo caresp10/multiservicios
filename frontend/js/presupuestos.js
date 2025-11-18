@@ -49,6 +49,7 @@ function agregarItem() {
     }
 
     const item = {
+        tipoItem: 'MANUAL',
         descripcion: descripcion,
         cantidad: cantidad,
         precioUnitario: precioUnitario,
@@ -99,7 +100,10 @@ function renderItemsTable() {
 
     tbody.innerHTML = presupuestoItems.map((item, index) => `
         <tr>
-            <td>${item.descripcion}</td>
+            <td>
+                ${getTipoItemBadge(item.tipoItem)}
+                ${item.descripcion}
+            </td>
             <td class="text-end">${item.cantidad.toFixed(2)}</td>
             <td class="text-end">${formatMoney(item.precioUnitario)}</td>
             <td class="text-end"><strong>${formatMoney(item.subtotal)}</strong></td>
@@ -110,6 +114,16 @@ function renderItemsTable() {
             </td>
         </tr>
     `).join('');
+}
+
+// Función para obtener el badge del tipo de item
+function getTipoItemBadge(tipoItem) {
+    const badges = {
+        'SERVICIO': '<span class="badge bg-primary"><i class="fas fa-concierge-bell"></i> Servicio</span>',
+        'REPUESTO': '<span class="badge bg-info"><i class="fas fa-cog"></i> Repuesto</span>',
+        'MANUAL': '<span class="badge bg-secondary"><i class="fas fa-keyboard"></i> Manual</span>'
+    };
+    return badges[tipoItem] || '';
 }
 
 // Calcular totales automáticamente
@@ -315,11 +329,26 @@ async function guardarPresupuesto() {
         fechaVencimiento: document.getElementById('fechaVencimiento').value || null,
         condicionesPago: document.getElementById('condicionesPago').value || '',
         observaciones: document.getElementById('observaciones').value || '',
-        items: presupuestoItems.map(item => ({
-            descripcion: item.descripcion,
-            cantidad: item.cantidad,
-            precioUnitario: item.precioUnitario
-        }))
+        items: presupuestoItems.map(item => {
+            const itemData = {
+                tipoItem: item.tipoItem || 'MANUAL',
+                descripcion: item.descripcion,
+                cantidad: item.cantidad,
+                precioUnitario: item.precioUnitario
+            };
+
+            // Si es un servicio del catálogo, agregar la referencia
+            if (item.tipoItem === 'SERVICIO' && item.idServicio) {
+                itemData.idServicio = item.idServicio;
+            }
+
+            // Si es un repuesto, agregar la referencia
+            if (item.tipoItem === 'REPUESTO' && item.idRepuesto) {
+                itemData.idRepuesto = item.idRepuesto;
+            }
+
+            return itemData;
+        })
     };
 
     console.log('Datos a enviar:', JSON.stringify(presupuestoData, null, 2)); // DEBUG
@@ -427,7 +456,114 @@ function getEstadoColor(estado) {
     return colors[estado] || 'secondary';
 }
 
+// ==============================================
+// NUEVAS FUNCIONES PARA SERVICIOS DEL CATÁLOGO
+// ==============================================
+
+let serviciosCatalogo = [];
+let servicioSeleccionado = null;
+
+// Cargar servicios del catálogo
+async function cargarServiciosCatalogo() {
+    try {
+        const response = await ServicioCatalogoService.getActivos();
+
+        if (response.success && response.data) {
+            serviciosCatalogo = response.data;
+            const select = document.getElementById('selectServicio');
+
+            select.innerHTML = '<option value="">Seleccione un servicio...</option>' +
+                serviciosCatalogo.map(servicio => `
+                    <option value="${servicio.idServicio}">
+                        ${servicio.codigo} - ${servicio.nombre} - ${formatCurrency(servicio.precioBase)}
+                    </option>
+                `).join('');
+        }
+    } catch (error) {
+        console.error('Error al cargar servicios:', error);
+    }
+}
+
+// Hacer la función global
+window.cargarServiciosCatalogo = cargarServiciosCatalogo;
+
+// Cuando se selecciona un servicio del catálogo
+function seleccionarServicio() {
+    const select = document.getElementById('selectServicio');
+    const servicioId = parseInt(select.value);
+
+    if (!servicioId) {
+        servicioSeleccionado = null;
+        document.getElementById('servicioPrecio').value = '';
+        document.getElementById('servicioInfo').style.display = 'none';
+        return;
+    }
+
+    servicioSeleccionado = serviciosCatalogo.find(s => s.idServicio === servicioId);
+
+    if (servicioSeleccionado) {
+        document.getElementById('servicioPrecio').value = servicioSeleccionado.precioBase;
+        document.getElementById('servicioDescripcion').textContent =
+            `${servicioSeleccionado.nombre} - ${servicioSeleccionado.categoria?.nombre || 'Sin categoría'}`;
+        document.getElementById('servicioInfo').style.display = 'block';
+    }
+}
+
+// Hacer la función global
+window.seleccionarServicio = seleccionarServicio;
+
+// Agregar servicio del catálogo al presupuesto
+function agregarServicio() {
+    if (!servicioSeleccionado) {
+        alert('Por favor seleccione un servicio');
+        return;
+    }
+
+    const cantidad = parseFloat(document.getElementById('servicioCantidad').value) || 0;
+    const precioUnitario = parseFloat(document.getElementById('servicioPrecio').value) || 0;
+
+    if (cantidad <= 0) {
+        alert('La cantidad debe ser mayor a 0');
+        return;
+    }
+
+    const item = {
+        tipoItem: 'SERVICIO',
+        idServicio: servicioSeleccionado.idServicio,
+        descripcion: `${servicioSeleccionado.codigo} - ${servicioSeleccionado.nombre}`,
+        cantidad: cantidad,
+        precioUnitario: precioUnitario,
+        subtotal: cantidad * precioUnitario,
+        unidadMedida: servicioSeleccionado.unidadMedida
+    };
+
+    presupuestoItems.push(item);
+
+    // Limpiar formulario
+    document.getElementById('selectServicio').value = '';
+    document.getElementById('servicioCantidad').value = '1';
+    document.getElementById('servicioPrecio').value = '';
+    document.getElementById('servicioInfo').style.display = 'none';
+    servicioSeleccionado = null;
+
+    renderItemsTable();
+    calcularTotales();
+}
+
+// Hacer la función global
+window.agregarServicio = agregarServicio;
+
+// Formatear moneda
+function formatCurrency(amount) {
+    if (!amount && amount !== 0) return 'Gs. 0';
+    return 'Gs. ' + Number(amount).toLocaleString('es-PY', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     cargarPresupuestos();
     cargarDatosFormulario();
+    cargarServiciosCatalogo();
 });
