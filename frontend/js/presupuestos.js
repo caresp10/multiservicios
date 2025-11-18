@@ -227,9 +227,23 @@ function aplicarFiltros() {
 
 async function cargarDatosFormulario() {
     try {
+        // Obtener todos los presupuestos para identificar pedidos que ya tienen presupuesto
+        const presupuestosResponse = await PresupuestoService.getAll();
+        const pedidosConPresupuesto = new Set();
+
+        if (presupuestosResponse.success && presupuestosResponse.data) {
+            presupuestosResponse.data.forEach(presupuesto => {
+                if (presupuesto.pedido?.idPedido) {
+                    pedidosConPresupuesto.add(presupuesto.pedido.idPedido);
+                }
+            });
+        }
+
         const pedidosResponse = await PedidoService.getAll();
         if (pedidosResponse.success && pedidosResponse.data) {
-            // Filtrar pedidos que NO están en proceso (sin OT, sin factura)
+            // Filtrar pedidos que:
+            // 1. NO están en proceso (sin OT, sin factura)
+            // 2. NO tienen presupuesto ya generado (a menos que sea edición)
             pedidos = pedidosResponse.data.filter(p =>
                 p.estado !== 'COMPLETADO' &&
                 p.estado !== 'CANCELADO' &&
@@ -237,7 +251,8 @@ async function cargarDatosFormulario() {
                 p.estado !== 'OT_EN_PROCESO' &&
                 p.estado !== 'OT_TERMINADA' &&
                 p.estado !== 'FACTURADO' &&
-                !p.tieneOt
+                !p.tieneOt &&
+                !pedidosConPresupuesto.has(p.idPedido) // NO tiene presupuesto
             );
             const select = document.getElementById('idPedido');
             select.innerHTML = '<option value="">Seleccione un pedido</option>' +
@@ -272,10 +287,28 @@ async function editarPresupuesto(id) {
             document.getElementById('modalPresupuestoTitle').innerHTML =
                 '<i class="fas fa-edit"></i> Editar Presupuesto';
 
+            // Cargar datos del formulario (sin filtrar el pedido actual)
             await cargarDatosFormulario();
 
+            // Agregar el pedido actual al select si no está (porque ya tiene presupuesto)
+            const select = document.getElementById('idPedido');
+            const pedidoId = presupuesto.pedido?.idPedido;
+            if (pedidoId) {
+                const pedidoExiste = Array.from(select.options).some(option =>
+                    option.value === pedidoId.toString()
+                );
+
+                // Si el pedido no está en la lista, agregarlo
+                if (!pedidoExiste && presupuesto.pedido) {
+                    const option = document.createElement('option');
+                    option.value = pedidoId;
+                    option.textContent = `${presupuesto.pedido.numeroPedido} - ${presupuesto.pedido.cliente?.nombre || 'Sin cliente'} (${presupuesto.pedido.estado})`;
+                    select.appendChild(option);
+                }
+            }
+
             document.getElementById('presupuestoId').value = presupuesto.idPresupuesto;
-            document.getElementById('idPedido').value = presupuesto.pedido?.idPedido || '';
+            document.getElementById('idPedido').value = pedidoId || '';
             document.getElementById('estado').value = presupuesto.estado;
             document.getElementById('descuento').value = presupuesto.descuento || '0';
             document.getElementById('validezDias').value = presupuesto.validezDias || 15;

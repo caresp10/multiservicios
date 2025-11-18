@@ -37,6 +37,11 @@ public class PresupuestoService {
         Pedido pedido = pedidoRepository.findById(request.getIdPedido())
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido no encontrado"));
 
+        // VALIDAR QUE EL PEDIDO NO TENGA YA UN PRESUPUESTO
+        presupuestoRepository.findByPedidoIdPedido(request.getIdPedido()).ifPresent(p -> {
+            throw new RuntimeException("ERROR: Este pedido ya tiene un presupuesto asociado (N° " + p.getNumeroPresupuesto() + "). No se pueden crear múltiples presupuestos para el mismo pedido.");
+        });
+
         // Validar que el pedido no esté ya en proceso (con OT o facturado)
         if (pedido.getTieneOt() != null && pedido.getTieneOt()) {
             throw new RuntimeException("No se puede crear un presupuesto para un pedido que ya tiene una Orden de Trabajo");
