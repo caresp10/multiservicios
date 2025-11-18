@@ -73,11 +73,8 @@ public class CompraService {
                 detalle.getCantidad()
             );
 
-            // Actualizar precio de compra si cambió
-            repuestoService.actualizarPrecioCompra(
-                detalle.getRepuesto().getIdRepuesto(),
-                detalle.getPrecioUnitario()
-            );
+            // TODO: Actualizar precio de costo y registrar en histórico si cambió
+            // Este comportamiento se debe implementar en el RepuestoService
         }
 
         return nuevaCompra;

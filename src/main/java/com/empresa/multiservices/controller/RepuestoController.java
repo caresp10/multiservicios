@@ -71,10 +71,10 @@ public class RepuestoController {
         return ResponseEntity.ok(ApiResponse.success("Resultados de búsqueda", repuestos));
     }
 
-    @GetMapping("/categoria/{categoria}")
+    @GetMapping("/categoria/{idCategoria}")
     @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO')")
-    public ResponseEntity<ApiResponse> listarPorCategoria(@PathVariable String categoria) {
-        List<Repuesto> repuestos = repuestoService.listarPorCategoria(categoria);
+    public ResponseEntity<ApiResponse> listarPorCategoria(@PathVariable Long idCategoria) {
+        List<Repuesto> repuestos = repuestoService.listarPorCategoria(idCategoria);
         return ResponseEntity.ok(ApiResponse.success("Repuestos de la categoría", repuestos));
     }
 
