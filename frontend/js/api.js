@@ -269,3 +269,83 @@ class TecnicoService {
         return ApiService.delete(`/tecnicos/${id}`);
     }
 }
+
+class ServicioCatalogoService {
+    static getAll() {
+        return ApiService.get('/servicios-catalogo');
+    }
+
+    static getActivos() {
+        return ApiService.get('/servicios-catalogo/activos');
+    }
+
+    static getById(id) {
+        return ApiService.get(`/servicios-catalogo/${id}`);
+    }
+
+    static getByCategoria(idCategoria) {
+        return ApiService.get(`/servicios-catalogo/categoria/${idCategoria}`);
+    }
+
+    static create(servicio) {
+        return ApiService.post('/servicios-catalogo', servicio);
+    }
+
+    static update(id, servicio) {
+        return ApiService.put(`/servicios-catalogo/${id}`, servicio);
+    }
+
+    static delete(id) {
+        return ApiService.delete(`/servicios-catalogo/${id}`);
+    }
+
+    static getHistorico(id) {
+        return ApiService.get(`/servicios-catalogo/${id}/historico-precios`);
+    }
+}
+
+class RepuestoService {
+    static getAll() {
+        return ApiService.get('/repuestos');
+    }
+
+    static getActivos() {
+        return ApiService.get('/repuestos/activos');
+    }
+
+    static getById(id) {
+        return ApiService.get(`/repuestos/${id}`);
+    }
+
+    static getStockBajo() {
+        return ApiService.get('/repuestos/stock-bajo');
+    }
+
+    static getByCategoria(idCategoria) {
+        return ApiService.get(`/repuestos/categoria/${idCategoria}`);
+    }
+
+    static create(repuesto) {
+        return ApiService.post('/repuestos', repuesto);
+    }
+
+    static update(id, repuesto) {
+        return ApiService.put(`/repuestos/${id}`, repuesto);
+    }
+
+    static delete(id) {
+        return ApiService.delete(`/repuestos/${id}`);
+    }
+
+    static ajustarStock(id, ajusteData) {
+        return ApiService.put(`/repuestos/${id}/ajustar-stock`, ajusteData);
+    }
+
+    static getHistorico(id) {
+        return ApiService.get(`/repuestos/${id}/historico-precios`);
+    }
+
+    static getMovimientos(id) {
+        return ApiService.get(`/repuestos/${id}/movimientos-stock`);
+    }
+}
