@@ -80,6 +80,91 @@ CREATE TABLE IF NOT EXISTS repuestos (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Inventario de repuestos con control de stock';
 
+-- Agregar columnas faltantes a tabla repuestos existente (si ya existía antes del script)
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN punto_reorden INT COMMENT "Stock en el que se debe reordenar" AFTER stock_maximo',
+        'SELECT "Column punto_reorden already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'punto_reorden'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN ubicacion VARCHAR(100) COMMENT "Ubicación física en almacén" AFTER punto_reorden',
+        'SELECT "Column ubicacion already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'ubicacion'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN telefono_proveedor VARCHAR(20) AFTER proveedor',
+        'SELECT "Column telefono_proveedor already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'telefono_proveedor'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN unidad_medida ENUM("UNIDAD", "METRO", "KILO", "LITRO", "CAJA", "ROLLO", "PAR") DEFAULT "UNIDAD" AFTER telefono_proveedor',
+        'SELECT "Column unidad_medida already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'unidad_medida'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN marca VARCHAR(50) AFTER unidad_medida',
+        'SELECT "Column marca already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'marca'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN modelo VARCHAR(50) AFTER marca',
+        'SELECT "Column modelo already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'modelo'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 -- 4. TABLA: historico_precios_repuestos
 -- Auditoría de cambios de precios en repuestos
 CREATE TABLE IF NOT EXISTS historico_precios_repuestos (
