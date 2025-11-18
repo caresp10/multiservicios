@@ -12,18 +12,6 @@ import java.util.List;
 @Service
 @Transactional
 public class RepuestoService {
-    @Autowired
-    private RepuestoHistorialPrecioService historialPrecioService;
-    public void actualizarPrecioCompra(Long id, java.math.BigDecimal nuevoPrecioCompra) {
-        Repuesto repuesto = obtenerPorId(id);
-        java.math.BigDecimal precioAnterior = repuesto.getPrecioCompra();
-        if (precioAnterior == null || precioAnterior.compareTo(nuevoPrecioCompra) != 0) {
-            repuesto.setPrecioCompra(nuevoPrecioCompra);
-            repuestoRepository.save(repuesto);
-            // Guardar en historial
-            historialPrecioService.registrarCambioPrecio(repuesto, nuevoPrecioCompra, repuesto.getPrecioVenta());
-        }
-    }
 
     @Autowired
     private RepuestoRepository repuestoRepository;
@@ -44,9 +32,10 @@ public class RepuestoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Repuesto no encontrado"));
 
         // Validar código único si se está modificando
-        if (!repuestoActualizado.getCodigo().equals(repuesto.getCodigo()) &&
-            repuestoRepository.existsByCodigo(repuestoActualizado.getCodigo())) {
-            throw new IllegalArgumentException("Ya existe un repuesto con el código: " + repuestoActualizado.getCodigo());
+        if (!repuestoActualizado.getCodigo().equals(repuesto.getCodigo())) {
+            if (repuestoRepository.existsByCodigoAndIdRepuestoNot(repuestoActualizado.getCodigo(), id)) {
+                throw new IllegalArgumentException("Ya existe un repuesto con el código: " + repuestoActualizado.getCodigo());
+            }
         }
 
         repuesto.setCodigo(repuestoActualizado.getCodigo());
@@ -56,11 +45,15 @@ public class RepuestoService {
         repuesto.setModelo(repuestoActualizado.getModelo());
         repuesto.setCategoria(repuestoActualizado.getCategoria());
         repuesto.setUnidadMedida(repuestoActualizado.getUnidadMedida());
-        repuesto.setPrecioCompra(repuestoActualizado.getPrecioCompra());
+        repuesto.setPrecioCosto(repuestoActualizado.getPrecioCosto());
         repuesto.setPrecioVenta(repuestoActualizado.getPrecioVenta());
         repuesto.setStockMinimo(repuestoActualizado.getStockMinimo());
         repuesto.setStockMaximo(repuestoActualizado.getStockMaximo());
+        repuesto.setPuntoReorden(repuestoActualizado.getPuntoReorden());
         repuesto.setUbicacion(repuestoActualizado.getUbicacion());
+        repuesto.setProveedor(repuestoActualizado.getProveedor());
+        repuesto.setTelefonoProveedor(repuestoActualizado.getTelefonoProveedor());
+        repuesto.setActivo(repuestoActualizado.getActivo());
 
         return repuestoRepository.save(repuesto);
     }
@@ -93,8 +86,8 @@ public class RepuestoService {
     }
 
     @Transactional(readOnly = true)
-    public List<Repuesto> listarPorCategoria(String categoria) {
-        return repuestoRepository.findByCategoria(categoria);
+    public List<Repuesto> listarPorCategoria(Long idCategoria) {
+        return repuestoRepository.findByCategoriaIdCategoria(idCategoria);
     }
 
     @Transactional(readOnly = true)
