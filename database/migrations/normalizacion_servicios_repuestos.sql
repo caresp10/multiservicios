@@ -81,6 +81,23 @@ CREATE TABLE IF NOT EXISTS repuestos (
 COMMENT='Inventario de repuestos con control de stock';
 
 -- Agregar columnas faltantes a tabla repuestos existente (si ya existía antes del script)
+
+-- id_categoria
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN id_categoria BIGINT AFTER descripcion',
+        'SELECT "Column id_categoria already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'id_categoria'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- proveedor
 SET @query = (
     SELECT IF(
         COUNT(*) = 0,
@@ -95,10 +112,11 @@ PREPARE stmt FROM @query;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+-- punto_reorden
 SET @query = (
     SELECT IF(
         COUNT(*) = 0,
-        'ALTER TABLE repuestos ADD COLUMN punto_reorden INT COMMENT "Stock en el que se debe reordenar" AFTER stock_maximo',
+        'ALTER TABLE repuestos ADD COLUMN punto_reorden INT COMMENT "Stock en el que se debe reordenar"',
         'SELECT "Column punto_reorden already exists" AS message'
     ) FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = DATABASE()
@@ -174,6 +192,51 @@ SET @query = (
     WHERE TABLE_SCHEMA = DATABASE()
     AND TABLE_NAME = 'repuestos'
     AND COLUMN_NAME = 'modelo'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- created_at
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER activo',
+        'SELECT "Column created_at already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'created_at'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- updated_at
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at',
+        'SELECT "Column updated_at already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'updated_at'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Foreign key para id_categoria (si no existe)
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD CONSTRAINT fk_repuesto_categoria FOREIGN KEY (id_categoria) REFERENCES categorias_servicio(id_categoria) ON DELETE SET NULL',
+        'SELECT "FK fk_repuesto_categoria already exists" AS message'
+    ) FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND CONSTRAINT_NAME = 'fk_repuesto_categoria'
 );
 PREPARE stmt FROM @query;
 EXECUTE stmt;
