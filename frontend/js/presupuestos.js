@@ -269,6 +269,9 @@ async function openModalPresupuesto() {
     document.getElementById('presupuestoForm').reset();
     document.getElementById('presupuestoId').value = '';
 
+    // Habilitar el selector de pedido (modo creación)
+    document.getElementById('idPedido').disabled = false;
+
     // Limpiar items
     presupuestoItems = [];
     renderItemsTable();
@@ -315,6 +318,9 @@ async function editarPresupuesto(id) {
             document.getElementById('fechaVencimiento').value = presupuesto.fechaVencimiento || '';
             document.getElementById('condicionesPago').value = presupuesto.condicionesPago || '';
             document.getElementById('observaciones').value = presupuesto.observaciones || '';
+
+            // BLOQUEAR el selector de pedido en modo edición
+            document.getElementById('idPedido').disabled = true;
 
             // Cargar items si existen
             presupuestoItems = presupuesto.items || [];
