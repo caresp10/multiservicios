@@ -462,6 +462,8 @@ function getEstadoColor(estado) {
 
 let serviciosCatalogo = [];
 let servicioSeleccionado = null;
+let repuestosCatalogo = [];
+let repuestoSeleccionado = null;
 
 // Cargar servicios del catálogo
 async function cargarServiciosCatalogo() {
@@ -562,8 +564,154 @@ function formatCurrency(amount) {
     });
 }
 
+// ==============================================
+// FUNCIONES PARA REPUESTOS CON VALIDACIÓN DE STOCK
+// ==============================================
+
+// Cargar repuestos activos
+async function cargarRepuestosCatalogo() {
+    try {
+        const response = await RepuestoService.getActivos();
+
+        if (response.success && response.data) {
+            repuestosCatalogo = response.data;
+            const select = document.getElementById('selectRepuesto');
+
+            select.innerHTML = '<option value="">Seleccione un repuesto...</option>' +
+                repuestosCatalogo.map(repuesto => {
+                    const stockBadge = getStockBadge(repuesto);
+                    return `
+                        <option value="${repuesto.idRepuesto}">
+                            ${repuesto.codigo} - ${repuesto.nombre} ${stockBadge} - ${formatCurrency(repuesto.precioVenta)}
+                        </option>
+                    `;
+                }).join('');
+        }
+    } catch (error) {
+        console.error('Error al cargar repuestos:', error);
+    }
+}
+
+// Hacer la función global
+window.cargarRepuestosCatalogo = cargarRepuestosCatalogo;
+
+// Obtener badge de stock
+function getStockBadge(repuesto) {
+    if (repuesto.stockActual === 0) {
+        return '(SIN STOCK)';
+    } else if (repuesto.stockActual <= repuesto.stockMinimo) {
+        return `(Stock bajo: ${repuesto.stockActual})`;
+    }
+    return `(Stock: ${repuesto.stockActual})`;
+}
+
+// Cuando se selecciona un repuesto del catálogo
+function seleccionarRepuesto() {
+    const select = document.getElementById('selectRepuesto');
+    const repuestoId = parseInt(select.value);
+
+    if (!repuestoId) {
+        repuestoSeleccionado = null;
+        document.getElementById('repuestoPrecio').value = '';
+        document.getElementById('repuestoStock').value = '';
+        document.getElementById('repuestoInfo').style.display = 'none';
+        document.getElementById('repuestoAlerta').style.display = 'none';
+        return;
+    }
+
+    repuestoSeleccionado = repuestosCatalogo.find(r => r.idRepuesto === repuestoId);
+
+    if (repuestoSeleccionado) {
+        document.getElementById('repuestoPrecio').value = repuestoSeleccionado.precioVenta;
+        document.getElementById('repuestoStock').value = repuestoSeleccionado.stockActual;
+
+        // Mostrar información del repuesto
+        document.getElementById('repuestoDescripcionText').textContent =
+            `${repuestoSeleccionado.nombre} - ${repuestoSeleccionado.categoria?.nombre || 'Sin categoría'}`;
+        document.getElementById('repuestoInfo').style.display = 'block';
+
+        // Mostrar alerta si el stock es bajo o no hay stock
+        if (repuestoSeleccionado.stockActual === 0) {
+            document.getElementById('repuestoAlertaText').textContent =
+                'Este repuesto NO tiene stock disponible. No se puede agregar al presupuesto.';
+            document.getElementById('repuestoAlerta').style.display = 'block';
+        } else if (repuestoSeleccionado.stockActual <= repuestoSeleccionado.stockMinimo) {
+            document.getElementById('repuestoAlertaText').textContent =
+                `ADVERTENCIA: Stock bajo. Solo quedan ${repuestoSeleccionado.stockActual} unidades disponibles.`;
+            document.getElementById('repuestoAlerta').style.display = 'block';
+        } else {
+            document.getElementById('repuestoAlerta').style.display = 'none';
+        }
+    }
+}
+
+// Hacer la función global
+window.seleccionarRepuesto = seleccionarRepuesto;
+
+// Agregar repuesto del catálogo al presupuesto con validación de stock
+function agregarRepuesto() {
+    if (!repuestoSeleccionado) {
+        alert('Por favor seleccione un repuesto');
+        return;
+    }
+
+    const cantidad = parseInt(document.getElementById('repuestoCantidad').value) || 0;
+    const precioUnitario = parseFloat(document.getElementById('repuestoPrecio').value) || 0;
+
+    if (cantidad <= 0) {
+        alert('La cantidad debe ser mayor a 0');
+        return;
+    }
+
+    // VALIDACIÓN DE STOCK
+    if (repuestoSeleccionado.stockActual === 0) {
+        alert('ERROR: Este repuesto NO tiene stock disponible. No se puede agregar al presupuesto.');
+        return;
+    }
+
+    if (cantidad > repuestoSeleccionado.stockActual) {
+        alert(`ERROR: Stock insuficiente. Solo hay ${repuestoSeleccionado.stockActual} unidades disponibles.`);
+        return;
+    }
+
+    // Advertencia si se está comprometiendo mucho stock
+    if (cantidad > repuestoSeleccionado.stockActual * 0.8) {
+        if (!confirm(`ADVERTENCIA: Va a comprometer ${cantidad} de ${repuestoSeleccionado.stockActual} unidades disponibles (${Math.round(cantidad/repuestoSeleccionado.stockActual*100)}%). ¿Desea continuar?`)) {
+            return;
+        }
+    }
+
+    const item = {
+        tipoItem: 'REPUESTO',
+        idRepuesto: repuestoSeleccionado.idRepuesto,
+        descripcion: `${repuestoSeleccionado.codigo} - ${repuestoSeleccionado.nombre}`,
+        cantidad: cantidad,
+        precioUnitario: precioUnitario,
+        subtotal: cantidad * precioUnitario,
+        stockDisponible: repuestoSeleccionado.stockActual
+    };
+
+    presupuestoItems.push(item);
+
+    // Limpiar formulario
+    document.getElementById('selectRepuesto').value = '';
+    document.getElementById('repuestoCantidad').value = '1';
+    document.getElementById('repuestoPrecio').value = '';
+    document.getElementById('repuestoStock').value = '';
+    document.getElementById('repuestoInfo').style.display = 'none';
+    document.getElementById('repuestoAlerta').style.display = 'none';
+    repuestoSeleccionado = null;
+
+    renderItemsTable();
+    calcularTotales();
+}
+
+// Hacer la función global
+window.agregarRepuesto = agregarRepuesto;
+
 document.addEventListener('DOMContentLoaded', function() {
     cargarPresupuestos();
     cargarDatosFormulario();
     cargarServiciosCatalogo();
+    cargarRepuestosCatalogo();
 });
