@@ -84,6 +84,20 @@ COMMENT='Inventario de repuestos con control de stock';
 SET @query = (
     SELECT IF(
         COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN proveedor VARCHAR(100)',
+        'SELECT "Column proveedor already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'proveedor'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
         'ALTER TABLE repuestos ADD COLUMN punto_reorden INT COMMENT "Stock en el que se debe reordenar" AFTER stock_maximo',
         'SELECT "Column punto_reorden already exists" AS message'
     ) FROM information_schema.COLUMNS
