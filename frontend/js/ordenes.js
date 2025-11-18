@@ -16,6 +16,9 @@ let ordenes = [];
 let pedidos = [];
 let tecnicos = [];
 let ordenEnRevision = null;
+let repuestosCatalogo = [];
+let repuestoOTSeleccionado = null;
+let repuestosOT = [];
 const modal = new bootstrap.Modal(document.getElementById('modalOrden'));
 const modalRevision = new bootstrap.Modal(document.getElementById('modalRevisionOT'));
 
@@ -218,7 +221,12 @@ async function openModalOrden() {
     document.getElementById('ordenForm').reset();
     document.getElementById('ordenId').value = '';
 
+    // Limpiar repuestos de OT
+    repuestosOT = [];
+    renderRepuestosOTTable();
+
     await cargarDatosFormulario();
+    await cargarRepuestosOT();
     modal.show();
 }
 
@@ -579,8 +587,202 @@ async function devolverATecnico() {
     }
 }
 
+// ==============================================
+// FUNCIONES PARA REPUESTOS EN OT CON VALIDACIÓN DE STOCK
+// ==============================================
+
+// Cargar repuestos activos
+async function cargarRepuestosOT() {
+    try {
+        const response = await RepuestoService.getActivos();
+
+        if (response.success && response.data) {
+            repuestosCatalogo = response.data;
+            const select = document.getElementById('selectRepuestoOT');
+
+            select.innerHTML = '<option value="">Seleccione un repuesto...</option>' +
+                repuestosCatalogo.map(repuesto => {
+                    const stockBadge = getStockBadge(repuesto);
+                    return `
+                        <option value="${repuesto.idRepuesto}">
+                            ${repuesto.codigo} - ${repuesto.nombre} ${stockBadge} - ${formatCurrency(repuesto.precioVenta)}
+                        </option>
+                    `;
+                }).join('');
+        }
+    } catch (error) {
+        console.error('Error al cargar repuestos:', error);
+    }
+}
+
+// Hacer la función global
+window.cargarRepuestosOT = cargarRepuestosOT;
+
+// Obtener badge de stock
+function getStockBadge(repuesto) {
+    if (repuesto.stockActual === 0) {
+        return '(SIN STOCK)';
+    } else if (repuesto.stockActual <= repuesto.stockMinimo) {
+        return `(Stock bajo: ${repuesto.stockActual})`;
+    }
+    return `(Stock: ${repuesto.stockActual})`;
+}
+
+// Cuando se selecciona un repuesto
+function seleccionarRepuestoOT() {
+    const select = document.getElementById('selectRepuestoOT');
+    const repuestoId = parseInt(select.value);
+
+    if (!repuestoId) {
+        repuestoOTSeleccionado = null;
+        document.getElementById('repuestoOTPrecio').value = '';
+        document.getElementById('repuestoOTStock').value = '';
+        document.getElementById('repuestoOTInfo').style.display = 'none';
+        document.getElementById('repuestoOTAlerta').style.display = 'none';
+        return;
+    }
+
+    repuestoOTSeleccionado = repuestosCatalogo.find(r => r.idRepuesto === repuestoId);
+
+    if (repuestoOTSeleccionado) {
+        document.getElementById('repuestoOTPrecio').value = repuestoOTSeleccionado.precioVenta;
+        document.getElementById('repuestoOTStock').value = repuestoOTSeleccionado.stockActual;
+
+        // Mostrar información del repuesto
+        document.getElementById('repuestoOTDescripcionText').textContent =
+            `${repuestoOTSeleccionado.nombre} - ${repuestoOTSeleccionado.categoria?.nombre || 'Sin categoría'}`;
+        document.getElementById('repuestoOTInfo').style.display = 'block';
+
+        // Mostrar alerta si el stock es bajo o no hay stock
+        if (repuestoOTSeleccionado.stockActual === 0) {
+            document.getElementById('repuestoOTAlertaText').textContent =
+                'Este repuesto NO tiene stock disponible. No se puede agregar a la orden.';
+            document.getElementById('repuestoOTAlerta').style.display = 'block';
+        } else if (repuestoOTSeleccionado.stockActual <= repuestoOTSeleccionado.stockMinimo) {
+            document.getElementById('repuestoOTAlertaText').textContent =
+                `ADVERTENCIA: Stock bajo. Solo quedan ${repuestoOTSeleccionado.stockActual} unidades disponibles.`;
+            document.getElementById('repuestoOTAlerta').style.display = 'block';
+        } else {
+            document.getElementById('repuestoOTAlerta').style.display = 'none';
+        }
+    }
+}
+
+// Hacer la función global
+window.seleccionarRepuestoOT = seleccionarRepuestoOT;
+
+// Agregar repuesto a la OT con validación de stock
+function agregarRepuestoOT() {
+    if (!repuestoOTSeleccionado) {
+        alert('Por favor seleccione un repuesto');
+        return;
+    }
+
+    const cantidad = parseInt(document.getElementById('repuestoOTCantidad').value) || 0;
+    const precioUnitario = parseFloat(document.getElementById('repuestoOTPrecio').value) || 0;
+
+    if (cantidad <= 0) {
+        alert('La cantidad debe ser mayor a 0');
+        return;
+    }
+
+    // VALIDACIÓN DE STOCK EN TIEMPO REAL
+    if (repuestoOTSeleccionado.stockActual === 0) {
+        alert('ERROR: Este repuesto NO tiene stock disponible. No se puede agregar a la orden.');
+        return;
+    }
+
+    if (cantidad > repuestoOTSeleccionado.stockActual) {
+        alert(`ERROR: Stock insuficiente. Solo hay ${repuestoOTSeleccionado.stockActual} unidades disponibles.`);
+        return;
+    }
+
+    // Advertencia si se está comprometiendo mucho stock
+    if (cantidad > repuestoOTSeleccionado.stockActual * 0.8) {
+        if (!confirm(`ADVERTENCIA: Va a comprometer ${cantidad} de ${repuestoOTSeleccionado.stockActual} unidades disponibles (${Math.round(cantidad/repuestoOTSeleccionado.stockActual*100)}%). ¿Desea continuar?`)) {
+            return;
+        }
+    }
+
+    const repuesto = {
+        idRepuesto: repuestoOTSeleccionado.idRepuesto,
+        descripcion: `${repuestoOTSeleccionado.codigo} - ${repuestoOTSeleccionado.nombre}`,
+        cantidad: cantidad,
+        precioUnitario: precioUnitario,
+        subtotal: cantidad * precioUnitario,
+        stockDisponible: repuestoOTSeleccionado.stockActual
+    };
+
+    repuestosOT.push(repuesto);
+
+    // Limpiar formulario
+    document.getElementById('selectRepuestoOT').value = '';
+    document.getElementById('repuestoOTCantidad').value = '1';
+    document.getElementById('repuestoOTPrecio').value = '';
+    document.getElementById('repuestoOTStock').value = '';
+    document.getElementById('repuestoOTInfo').style.display = 'none';
+    document.getElementById('repuestoOTAlerta').style.display = 'none';
+    repuestoOTSeleccionado = null;
+
+    renderRepuestosOTTable();
+}
+
+// Hacer la función global
+window.agregarRepuestoOT = agregarRepuestoOT;
+
+// Eliminar repuesto de la OT
+function eliminarRepuestoOT(index) {
+    if (confirm('¿Desea eliminar este repuesto?')) {
+        repuestosOT.splice(index, 1);
+        renderRepuestosOTTable();
+    }
+}
+
+// Hacer la función global
+window.eliminarRepuestoOT = eliminarRepuestoOT;
+
+// Renderizar tabla de repuestos de OT
+function renderRepuestosOTTable() {
+    const tbody = document.getElementById('repuestosOTTableBody');
+
+    if (repuestosOT.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted">
+                    <small>No hay repuestos agregados</small>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = repuestosOT.map((repuesto, index) => `
+        <tr>
+            <td>${repuesto.descripcion}</td>
+            <td class="text-end">${repuesto.cantidad}</td>
+            <td class="text-end">${formatCurrency(repuesto.precioUnitario)}</td>
+            <td class="text-end"><strong>${formatCurrency(repuesto.subtotal)}</strong></td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-danger" onclick="eliminarRepuestoOT(${index})" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Formatear moneda
+function formatCurrency(amount) {
+    if (!amount && amount !== 0) return 'Gs. 0';
+    return 'Gs. ' + Number(amount).toLocaleString('es-PY', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    });
+}
+
 // Inicializar
 document.addEventListener('DOMContentLoaded', function() {
     cargarOrdenes();
     cargarDatosFormulario(); // Cargar técnicos para el filtro
+    cargarRepuestosOT(); // Cargar repuestos del catálogo
 });
