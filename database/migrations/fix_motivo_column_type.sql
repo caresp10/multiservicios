@@ -1,14 +1,13 @@
 -- =====================================================
--- MIGRATION: Agregar columnas faltantes a movimientos_stock
+-- FIX: Corregir tipo de columna motivo en movimientos_stock
 -- =====================================================
--- Descripción: Agrega las columnas motivo y referencia que faltan
---              en la tabla movimientos_stock para que coincida con
---              la entidad MovimientoStock.java
+-- Descripción: Si la columna motivo fue creada como VARCHAR,
+--              la elimina y la recrea como ENUM
 -- =====================================================
 
 USE bd_multiservicios;
 
--- Verificar y agregar columna motivo
+-- Verificar si la columna existe
 SET @column_exists = (
     SELECT COUNT(*)
     FROM information_schema.COLUMNS
@@ -17,18 +16,26 @@ SET @column_exists = (
     AND COLUMN_NAME = 'motivo'
 );
 
-SET @sql = IF(@column_exists = 0,
-    'ALTER TABLE movimientos_stock
-     ADD COLUMN motivo ENUM(''COMPRA'',''VENTA'',''DEVOLUCION'',''AJUSTE_INVENTARIO'',''GARANTIA'',''PERDIDA'',''DANO'',''DONACION'',''TRANSFERENCIA'',''OTRO'') NOT NULL DEFAULT ''OTRO'' AFTER cantidad,
-     ADD INDEX idx_motivo (motivo)',
-    'SELECT ''La columna motivo ya existe'' AS mensaje'
+-- Si existe, eliminarla
+SET @sql = IF(@column_exists > 0,
+    'ALTER TABLE movimientos_stock DROP COLUMN motivo',
+    'SELECT ''La columna motivo no existe, nada que eliminar'' AS mensaje'
 );
 
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- Verificar y agregar columna referencia
+-- Ahora crear la columna con el tipo correcto (ENUM)
+ALTER TABLE movimientos_stock
+ADD COLUMN motivo ENUM('COMPRA','VENTA','DEVOLUCION','AJUSTE_INVENTARIO','GARANTIA','PERDIDA','DANO','DONACION','TRANSFERENCIA','OTRO')
+NOT NULL DEFAULT 'OTRO' AFTER cantidad;
+
+-- Agregar índice
+ALTER TABLE movimientos_stock
+ADD INDEX idx_motivo (motivo);
+
+-- Verificar si la columna referencia existe
 SET @column_exists = (
     SELECT COUNT(*)
     FROM information_schema.COLUMNS
@@ -37,20 +44,15 @@ SET @column_exists = (
     AND COLUMN_NAME = 'referencia'
 );
 
+-- Agregar columna referencia si no existe
 SET @sql = IF(@column_exists = 0,
-    'ALTER TABLE movimientos_stock
-     ADD COLUMN referencia VARCHAR(100) NULL AFTER motivo',
+    'ALTER TABLE movimientos_stock ADD COLUMN referencia VARCHAR(100) NULL AFTER motivo',
     'SELECT ''La columna referencia ya existe'' AS mensaje'
 );
 
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
-
--- Actualizar tipo_movimiento ENUM si es necesario
--- La tabla original tiene ENUM('ENTRADA', 'SALIDA', 'AJUSTE', 'DEVOLUCION')
--- La entidad solo usa ENUM('ENTRADA', 'SALIDA')
--- Esto es compatible, no requiere cambios por ahora
 
 -- Migrar datos existentes si los hay
 -- Convertir valores antiguos de tipo_movimiento a motivo apropiado
@@ -77,7 +79,7 @@ WHERE m.id_compra IS NOT NULL AND m.referencia IS NULL;
 
 -- Verificación final
 SELECT
-    'Columnas agregadas exitosamente' AS resultado,
+    'Columna motivo corregida exitosamente a tipo ENUM' AS resultado,
     COUNT(*) AS total_movimientos,
     COUNT(DISTINCT motivo) AS motivos_diferentes,
     COUNT(CASE WHEN referencia IS NOT NULL THEN 1 END) AS con_referencia
