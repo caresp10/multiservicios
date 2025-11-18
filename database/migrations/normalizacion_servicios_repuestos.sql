@@ -97,6 +97,66 @@ PREPARE stmt FROM @query;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+-- precio_costo
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN precio_costo DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT "Precio de compra al proveedor"',
+        'SELECT "Column precio_costo already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'precio_costo'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- precio_venta
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN precio_venta DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT "Precio de venta al cliente"',
+        'SELECT "Column precio_venta already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'precio_venta'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- stock_minimo
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN stock_minimo INT DEFAULT 10',
+        'SELECT "Column stock_minimo already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'stock_minimo'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- stock_maximo
+SET @query = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE repuestos ADD COLUMN stock_maximo INT DEFAULT 100',
+        'SELECT "Column stock_maximo already exists" AS message'
+    ) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'repuestos'
+    AND COLUMN_NAME = 'stock_maximo'
+);
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 -- proveedor
 SET @query = (
     SELECT IF(
