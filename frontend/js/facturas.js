@@ -15,6 +15,10 @@ let ordenesTerminadas = [];
 let ordenSeleccionada = null;
 let itemsPresupuesto = []; // Items del presupuesto original
 let itemsAdicionales = []; // Items adicionales agregados manualmente
+let serviciosCatalogo = [];
+let servicioSeleccionadoFactura = null;
+let repuestosCatalogo = [];
+let repuestoSeleccionadoFactura = null;
 const modal = new bootstrap.Modal(document.getElementById('modalFactura'));
 
 document.getElementById('sidebarToggle')?.addEventListener('click', function() {
@@ -437,7 +441,7 @@ function mostrarDetalleOT(ot, datosFacturacion) {
     document.getElementById('detNumeroOT').textContent = ot.numeroOt;
     document.getElementById('detNumeroPedido').textContent = datosFacturacion.pedido.numeroPedido;
     document.getElementById('detCliente').textContent = `${datosFacturacion.cliente.nombre} ${datosFacturacion.cliente.apellido || ''}`;
-    document.getElementById('detDocumento').textContent = datosFacturacion.cliente.documento || 'N/A';
+    document.getElementById('detDocumento').textContent = datosFacturacion.cliente.rucCi || 'N/A';
     document.getElementById('detDireccion').textContent = datosFacturacion.cliente.direccion || 'N/A';
     document.getElementById('detTelefono').textContent = datosFacturacion.cliente.telefono || 'N/A';
     document.getElementById('detTecnico').textContent = ot.tecnico ?
@@ -518,6 +522,7 @@ function agregarItemFactura() {
     const subtotal = cantidad * precioUnitario;
 
     itemsAdicionales.push({
+        tipoItem: 'OTRO', // Item manual
         descripcion: descripcion,
         cantidad: cantidad,
         precioUnitario: precioUnitario,
@@ -539,7 +544,7 @@ function renderItemsAdicionales() {
     if (itemsAdicionales.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="text-center text-muted">No hay items adicionales agregados</td>
+                <td colspan="6" class="text-center text-muted">No hay items adicionales agregados</td>
             </tr>
         `;
         return;
@@ -547,6 +552,7 @@ function renderItemsAdicionales() {
 
     tbody.innerHTML = itemsAdicionales.map((item, index) => `
         <tr>
+            <td>${getTipoItemBadge(item.tipoItem)}</td>
             <td>${item.descripcion}</td>
             <td class="text-end">${formatNumber(item.cantidad)}</td>
             <td class="text-end">${formatMoney(item.precioUnitario)}</td>
@@ -634,24 +640,42 @@ async function guardarFactura() {
 
     // Agregar items del presupuesto
     itemsPresupuesto.forEach(item => {
-        todosLosItems.push({
-            tipoItem: 'SERVICIO',
+        const facturaItem = {
+            tipoItem: item.tipoItem || 'SERVICIO',
             descripcion: sanitizeString(item.descripcion),
             cantidad: parseFloat(item.cantidad) || 1,
             precioUnitario: parseFloat(item.precioUnitario) || 0,
             subtotal: parseFloat(item.subtotal) || 0
-        });
+        };
+
+        // Agregar referencias según el tipo
+        if (item.tipoItem === 'SERVICIO' && item.idServicio) {
+            facturaItem.servicio = { idServicio: item.idServicio };
+        } else if (item.tipoItem === 'REPUESTO' && item.idRepuesto) {
+            facturaItem.repuesto = { idRepuesto: item.idRepuesto };
+        }
+
+        todosLosItems.push(facturaItem);
     });
 
     // Agregar items adicionales
     itemsAdicionales.forEach(item => {
-        todosLosItems.push({
-            tipoItem: 'SERVICIO',
+        const facturaItem = {
+            tipoItem: item.tipoItem || 'OTRO',
             descripcion: sanitizeString(item.descripcion),
             cantidad: parseFloat(item.cantidad) || 1,
             precioUnitario: parseFloat(item.precioUnitario) || 0,
             subtotal: parseFloat(item.subtotal) || 0
-        });
+        };
+
+        // Agregar referencias según el tipo
+        if (item.tipoItem === 'SERVICIO' && item.idServicio) {
+            facturaItem.servicio = { idServicio: item.idServicio };
+        } else if (item.tipoItem === 'REPUESTO' && item.idRepuesto) {
+            facturaItem.repuesto = { idRepuesto: item.idRepuesto };
+        }
+
+        todosLosItems.push(facturaItem);
     });
 
     const facturaData = {
@@ -976,9 +1000,242 @@ async function exportarPDF(id) {
     }
 }
 
+// =====================================================
+// FUNCIONES PARA SELECTOR DE SERVICIOS Y REPUESTOS
+// =====================================================
+
+// Cargar servicios del catálogo
+async function cargarServiciosFactura() {
+    try {
+        const response = await ServicioCatalogoService.getActivos();
+        if (response.success && response.data) {
+            serviciosCatalogo = response.data;
+            const select = document.getElementById('selectServicioFactura');
+            select.innerHTML = '<option value="">Seleccione un servicio...</option>' +
+                serviciosCatalogo.map(servicio => `
+                    <option value="${servicio.idServicio}">
+                        ${servicio.nombre} - ${formatCurrency(servicio.precioVenta)}
+                    </option>
+                `).join('');
+        }
+    } catch (error) {
+        console.error('Error al cargar servicios:', error);
+    }
+}
+
+// Cargar repuestos del catálogo
+async function cargarRepuestosFactura() {
+    try {
+        const response = await RepuestoService.getActivos();
+        if (response.success && response.data) {
+            repuestosCatalogo = response.data;
+            const select = document.getElementById('selectRepuestoFactura');
+            select.innerHTML = '<option value="">Seleccione un repuesto...</option>' +
+                repuestosCatalogo.map(repuesto => {
+                    const stockBadge = getStockBadge(repuesto);
+                    return `
+                        <option value="${repuesto.idRepuesto}">
+                            ${repuesto.codigo} - ${repuesto.nombre} ${stockBadge} - ${formatCurrency(repuesto.precioVenta)}
+                        </option>
+                    `;
+                }).join('');
+        }
+    } catch (error) {
+        console.error('Error al cargar repuestos:', error);
+    }
+}
+
+// Obtener badge de stock
+function getStockBadge(repuesto) {
+    if (repuesto.stockActual === 0) {
+        return '(SIN STOCK)';
+    } else if (repuesto.stockActual <= repuesto.stockMinimo) {
+        return `(Stock bajo: ${repuesto.stockActual})`;
+    }
+    return `(Stock: ${repuesto.stockActual})`;
+}
+
+// Seleccionar servicio
+function seleccionarServicioFactura() {
+    const select = document.getElementById('selectServicioFactura');
+    const servicioId = parseInt(select.value);
+
+    if (!servicioId) {
+        servicioSeleccionadoFactura = null;
+        document.getElementById('servicioPrecioFactura').value = '';
+        document.getElementById('servicioInfoFactura').style.display = 'none';
+        return;
+    }
+
+    servicioSeleccionadoFactura = serviciosCatalogo.find(s => s.idServicio === servicioId);
+
+    if (servicioSeleccionadoFactura) {
+        document.getElementById('servicioPrecioFactura').value = servicioSeleccionadoFactura.precioVenta;
+        document.getElementById('servicioDescripcionTextFactura').textContent =
+            `${servicioSeleccionadoFactura.nombre} - ${servicioSeleccionadoFactura.categoria?.nombre || 'Sin categoría'}`;
+        document.getElementById('servicioInfoFactura').style.display = 'block';
+    }
+}
+
+// Agregar servicio
+function agregarServicioFactura() {
+    if (!servicioSeleccionadoFactura) {
+        alert('Por favor seleccione un servicio');
+        return;
+    }
+
+    const cantidad = parseFloat(document.getElementById('servicioCantidadFactura').value) || 0;
+    const precioUnitario = parseFloat(document.getElementById('servicioPrecioFactura').value) || 0;
+
+    if (cantidad <= 0) {
+        alert('La cantidad debe ser mayor a 0');
+        return;
+    }
+
+    const item = {
+        tipoItem: 'SERVICIO',
+        idServicio: servicioSeleccionadoFactura.idServicio,
+        descripcion: servicioSeleccionadoFactura.nombre,
+        cantidad: cantidad,
+        precioUnitario: precioUnitario,
+        subtotal: cantidad * precioUnitario
+    };
+
+    itemsAdicionales.push(item);
+
+    // Limpiar formulario
+    document.getElementById('selectServicioFactura').value = '';
+    document.getElementById('servicioCantidadFactura').value = '1';
+    document.getElementById('servicioPrecioFactura').value = '';
+    document.getElementById('servicioInfoFactura').style.display = 'none';
+    servicioSeleccionadoFactura = null;
+
+    renderItemsAdicionales();
+    calcularTotales();
+}
+
+// Seleccionar repuesto
+function seleccionarRepuestoFactura() {
+    const select = document.getElementById('selectRepuestoFactura');
+    const repuestoId = parseInt(select.value);
+
+    if (!repuestoId) {
+        repuestoSeleccionadoFactura = null;
+        document.getElementById('repuestoPrecioFactura').value = '';
+        document.getElementById('repuestoStockFactura').value = '';
+        document.getElementById('repuestoInfoFactura').style.display = 'none';
+        document.getElementById('repuestoAlertaFactura').style.display = 'none';
+        return;
+    }
+
+    repuestoSeleccionadoFactura = repuestosCatalogo.find(r => r.idRepuesto === repuestoId);
+
+    if (repuestoSeleccionadoFactura) {
+        document.getElementById('repuestoPrecioFactura').value = repuestoSeleccionadoFactura.precioVenta;
+        document.getElementById('repuestoStockFactura').value = repuestoSeleccionadoFactura.stockActual;
+
+        document.getElementById('repuestoDescripcionTextFactura').textContent =
+            `${repuestoSeleccionadoFactura.nombre} - ${repuestoSeleccionadoFactura.categoria?.nombre || 'Sin categoría'}`;
+        document.getElementById('repuestoInfoFactura').style.display = 'block';
+
+        // Alertas de stock
+        if (repuestoSeleccionadoFactura.stockActual === 0) {
+            document.getElementById('repuestoAlertaTextFactura').textContent =
+                'Este repuesto NO tiene stock disponible. No se puede agregar a la factura.';
+            document.getElementById('repuestoAlertaFactura').style.display = 'block';
+        } else if (repuestoSeleccionadoFactura.stockActual <= repuestoSeleccionadoFactura.stockMinimo) {
+            document.getElementById('repuestoAlertaTextFactura').textContent =
+                `ADVERTENCIA: Stock bajo. Solo quedan ${repuestoSeleccionadoFactura.stockActual} unidades disponibles.`;
+            document.getElementById('repuestoAlertaFactura').style.display = 'block';
+        } else {
+            document.getElementById('repuestoAlertaFactura').style.display = 'none';
+        }
+    }
+}
+
+// Agregar repuesto
+function agregarRepuestoFactura() {
+    if (!repuestoSeleccionadoFactura) {
+        alert('Por favor seleccione un repuesto');
+        return;
+    }
+
+    const cantidad = parseInt(document.getElementById('repuestoCantidadFactura').value) || 0;
+    const precioUnitario = parseFloat(document.getElementById('repuestoPrecioFactura').value) || 0;
+
+    if (cantidad <= 0) {
+        alert('La cantidad debe ser mayor a 0');
+        return;
+    }
+
+    // VALIDACIÓN DE STOCK EN TIEMPO REAL
+    if (repuestoSeleccionadoFactura.stockActual === 0) {
+        alert('ERROR: Este repuesto NO tiene stock disponible. No se puede agregar a la factura.');
+        return;
+    }
+
+    if (cantidad > repuestoSeleccionadoFactura.stockActual) {
+        alert(`ERROR: Stock insuficiente. Solo hay ${repuestoSeleccionadoFactura.stockActual} unidades disponibles.`);
+        return;
+    }
+
+    // Advertencia si se está comprometiendo mucho stock
+    if (cantidad > repuestoSeleccionadoFactura.stockActual * 0.8) {
+        if (!confirm(`ADVERTENCIA: Va a comprometer ${cantidad} de ${repuestoSeleccionadoFactura.stockActual} unidades disponibles (${Math.round(cantidad/repuestoSeleccionadoFactura.stockActual*100)}%). ¿Desea continuar?`)) {
+            return;
+        }
+    }
+
+    const item = {
+        tipoItem: 'REPUESTO',
+        idRepuesto: repuestoSeleccionadoFactura.idRepuesto,
+        descripcion: `${repuestoSeleccionadoFactura.codigo} - ${repuestoSeleccionadoFactura.nombre}`,
+        cantidad: cantidad,
+        precioUnitario: precioUnitario,
+        subtotal: cantidad * precioUnitario,
+        stockDisponible: repuestoSeleccionadoFactura.stockActual
+    };
+
+    itemsAdicionales.push(item);
+
+    // Limpiar formulario
+    document.getElementById('selectRepuestoFactura').value = '';
+    document.getElementById('repuestoCantidadFactura').value = '1';
+    document.getElementById('repuestoPrecioFactura').value = '';
+    document.getElementById('repuestoStockFactura').value = '';
+    document.getElementById('repuestoInfoFactura').style.display = 'none';
+    document.getElementById('repuestoAlertaFactura').style.display = 'none';
+    repuestoSeleccionadoFactura = null;
+
+    renderItemsAdicionales();
+    calcularTotales();
+}
+
+// Formatear moneda
+function formatCurrency(amount) {
+    if (!amount && amount !== 0) return 'Gs. 0';
+    return 'Gs. ' + Number(amount).toLocaleString('es-PY', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    });
+}
+
+// Obtener badge de tipo de item
+function getTipoItemBadge(tipoItem) {
+    const badges = {
+        'SERVICIO': '<span class="badge bg-primary"><i class="fas fa-concierge-bell"></i> Servicio</span>',
+        'REPUESTO': '<span class="badge bg-info"><i class="fas fa-cog"></i> Repuesto</span>',
+        'DIAGNOSTICO': '<span class="badge bg-warning"><i class="fas fa-stethoscope"></i> Diagnóstico</span>',
+        'OTRO': '<span class="badge bg-secondary"><i class="fas fa-keyboard"></i> Manual</span>'
+    };
+    return badges[tipoItem] || '<span class="badge bg-secondary">Manual</span>';
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     cargarFacturas();
     cargarFiltroClientes();
+    cargarServiciosFactura();
+    cargarRepuestosFactura();
 
     // Inicializar modal de detalles
     const modalElement = document.getElementById('modalDetallesFactura');
