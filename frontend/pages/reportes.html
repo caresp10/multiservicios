@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../css/styles.css">
+    <!-- html2pdf.js for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
     <div class="dashboard-wrapper">
@@ -45,9 +47,9 @@
                     </nav>
                 </div>
 
-                <!-- Filtro de Fecha -->
+                <!-- Filtro de Fecha Global -->
                 <div class="table-card mb-4">
-                    <div class="row g-3">
+                    <div class="row g-3 align-items-end">
                         <div class="col-md-3">
                             <label class="form-label"><i class="fas fa-calendar"></i> Fecha Inicio</label>
                             <input type="date" class="form-control" id="fechaInicio">
@@ -57,13 +59,43 @@
                             <input type="date" class="form-control" id="fechaFin">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">&nbsp;</label>
                             <button class="btn btn-primary w-100" onclick="cargarReportes()">
                                 <i class="fas fa-sync"></i> Actualizar
                             </button>
                         </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-danger w-100" onclick="exportarPDF()">
+                                <i class="fas fa-file-pdf"></i> Exportar a PDF
+                            </button>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Tabs de Reportes -->
+                <ul class="nav nav-tabs mb-4" id="reportesTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="resumen-tab" data-bs-toggle="tab"
+                                data-bs-target="#resumen-panel" type="button" role="tab">
+                            <i class="fas fa-tachometer-alt"></i> Resumen General
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="stock-tab" data-bs-toggle="tab"
+                                data-bs-target="#stock-panel" type="button" role="tab">
+                            <i class="fas fa-boxes"></i> Stock y Márgenes
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="ventas-tab" data-bs-toggle="tab"
+                                data-bs-target="#ventas-panel" type="button" role="tab">
+                            <i class="fas fa-shopping-cart"></i> Ventas
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="reportesTabContent">
+                    <!-- TAB 1: Resumen General -->
+                    <div class="tab-pane fade show active" id="resumen-panel" role="tabpanel">
 
                 <!-- Resumen General -->
                 <div class="row g-4 mb-4">
@@ -188,6 +220,183 @@
                         </div>
                     </div>
                 </div>
+
+                    </div>
+                    <!-- Fin TAB 1: Resumen General -->
+
+                    <!-- TAB 2: Stock y Márgenes -->
+                    <div class="tab-pane fade" id="stock-panel" role="tabpanel">
+                        <div class="row g-4 mb-4">
+                            <!-- Stock Bajo -->
+                            <div class="col-md-12">
+                                <div class="table-card">
+                                    <h5><i class="fas fa-exclamation-triangle text-warning"></i> Repuestos con Stock Bajo</h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Código</th>
+                                                    <th>Nombre</th>
+                                                    <th>Stock Actual</th>
+                                                    <th>Stock Mínimo</th>
+                                                    <th>Punto Reorden</th>
+                                                    <th>Estado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="stockBajoTable">
+                                                <tr><td colspan="6" class="text-center text-muted">Cargando...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Stock Crítico (Sin Stock) -->
+                            <div class="col-md-12">
+                                <div class="table-card">
+                                    <h5><i class="fas fa-times-circle text-danger"></i> Repuestos Sin Stock</h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Código</th>
+                                                    <th>Nombre</th>
+                                                    <th>Marca</th>
+                                                    <th>Modelo</th>
+                                                    <th>Punto Reorden</th>
+                                                    <th>Proveedor</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="stockCriticoTable">
+                                                <tr><td colspan="6" class="text-center text-muted">Cargando...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Análisis de Márgenes -->
+                            <div class="col-md-12">
+                                <div class="table-card">
+                                    <h5><i class="fas fa-percentage text-success"></i> Análisis de Márgenes de Ganancia</h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Código</th>
+                                                    <th>Nombre</th>
+                                                    <th class="text-end">Precio Costo</th>
+                                                    <th class="text-end">Precio Venta</th>
+                                                    <th class="text-end">Margen (Gs.)</th>
+                                                    <th class="text-end">Margen (%)</th>
+                                                    <th>Rentabilidad</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="margenesTable">
+                                                <tr><td colspan="7" class="text-center text-muted">Cargando...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Fin TAB 2: Stock y Márgenes -->
+
+                    <!-- TAB 3: Ventas -->
+                    <div class="tab-pane fade" id="ventas-panel" role="tabpanel">
+                        <div class="row g-4 mb-4">
+                            <!-- Servicios Más Vendidos -->
+                            <div class="col-md-6">
+                                <div class="table-card">
+                                    <h5><i class="fas fa-concierge-bell text-primary"></i> Top 10 Servicios Más Vendidos</h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Servicio</th>
+                                                    <th class="text-end">Cantidad</th>
+                                                    <th class="text-end">Total Facturado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="serviciosVendidosTable">
+                                                <tr><td colspan="4" class="text-center text-muted">Cargando...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Repuestos Más Vendidos -->
+                            <div class="col-md-6">
+                                <div class="table-card">
+                                    <h5><i class="fas fa-cog text-info"></i> Top 10 Repuestos Más Vendidos</h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Repuesto</th>
+                                                    <th class="text-end">Cantidad</th>
+                                                    <th class="text-end">Total Facturado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="repuestosVendidosTable">
+                                                <tr><td colspan="4" class="text-center text-muted">Cargando...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Ingresos por Categoría de Servicio -->
+                            <div class="col-md-6">
+                                <div class="table-card">
+                                    <h5><i class="fas fa-chart-pie text-success"></i> Ingresos por Categoría de Servicio</h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Categoría</th>
+                                                    <th class="text-end">Servicios Vendidos</th>
+                                                    <th class="text-end">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="categoriaServiciosTable">
+                                                <tr><td colspan="3" class="text-center text-muted">Cargando...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Resumen de Facturación -->
+                            <div class="col-md-6">
+                                <div class="table-card">
+                                    <h5><i class="fas fa-money-bill-wave text-warning"></i> Resumen de Facturación</h5>
+                                    <div class="row text-center">
+                                        <div class="col-md-6 mb-3">
+                                            <h6 class="text-muted">Total Servicios</h6>
+                                            <h4 id="totalServiciosFacturados" class="text-primary">Gs. 0</h4>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <h6 class="text-muted">Total Repuestos</h6>
+                                            <h4 id="totalRepuestosFacturados" class="text-info">Gs. 0</h4>
+                                        </div>
+                                        <div class="col-md-12">
+                                            <h6 class="text-muted">Total General</h6>
+                                            <h3 id="totalGeneralFacturado" class="text-success">Gs. 0</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Fin TAB 3: Ventas -->
+
+                </div>
+                <!-- Fin Tab Content -->
             </div>
         </div>
     </div>
