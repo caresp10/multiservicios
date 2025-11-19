@@ -145,9 +145,29 @@ public class OrdenTrabajoService {
         return otRepository.findByEstado(estado);
     }
     
+    @Transactional(readOnly = true)
     public OrdenTrabajo obtenerPorId(Long id) {
-        return otRepository.findById(id)
+        OrdenTrabajo ot = otRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Orden de trabajo no encontrada"));
+
+        // Forzar la carga de relaciones LAZY
+        if (ot.getPedido() != null) {
+            ot.getPedido().getIdPedido(); // Forzar carga del pedido
+        }
+        if (ot.getPresupuesto() != null) {
+            ot.getPresupuesto().getIdPresupuesto(); // Forzar carga del presupuesto
+            if (ot.getPresupuesto().getPedido() != null) {
+                ot.getPresupuesto().getPedido().getIdPedido(); // Forzar carga del pedido del presupuesto
+            }
+        }
+        if (ot.getTecnico() != null) {
+            ot.getTecnico().getIdTecnico(); // Forzar carga del técnico
+        }
+        if (ot.getRepuestos() != null) {
+            ot.getRepuestos().size(); // Forzar carga de repuestos
+        }
+
+        return ot;
     }
 
     @Transactional(readOnly = true)

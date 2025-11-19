@@ -31,12 +31,58 @@ public class ServicioCatalogoService {
     private UsuarioRepository usuarioRepository;
 
     public ServicioCatalogo crear(ServicioCatalogo servicio) {
-        // Validar que el código no exista
-        if (servicioCatalogoRepository.existsByCodigo(servicio.getCodigo())) {
-            throw new IllegalArgumentException("Ya existe un servicio con el código: " + servicio.getCodigo());
+        // Generar código automáticamente si no se proporcionó o si está vacío
+        if (servicio.getCodigo() == null || servicio.getCodigo().trim().isEmpty()) {
+            if (servicio.getCategoria() == null || servicio.getCategoria().getIdCategoria() == null) {
+                throw new IllegalArgumentException("Debe especificar una categoría para generar el código automáticamente");
+            }
+            servicio.setCodigo(generarCodigoPorCategoria(servicio.getCategoria().getIdCategoria()));
+        } else {
+            // Validar que el código no exista
+            if (servicioCatalogoRepository.existsByCodigo(servicio.getCodigo())) {
+                throw new IllegalArgumentException("Ya existe un servicio con el código: " + servicio.getCodigo());
+            }
         }
 
         return servicioCatalogoRepository.save(servicio);
+    }
+
+    /**
+     * Genera un código automático para un servicio basado en su categoría
+     * Formato: PREFIJO-NNN (ej: ELEC-001, MECAN-015)
+     */
+    public String generarCodigoPorCategoria(Long idCategoria) {
+        ServicioCatalogo servicioEjemplo = new ServicioCatalogo();
+        servicioEjemplo.setCategoria(new com.empresa.multiservices.model.CategoriaServicio());
+        servicioEjemplo.getCategoria().setIdCategoria(idCategoria);
+
+        // Obtener todos los servicios de esta categoría
+        List<ServicioCatalogo> serviciosCategoria = servicioCatalogoRepository.findByCategoriaIdCategoria(idCategoria);
+
+        // Obtener el prefijo de la categoría
+        ServicioCatalogo primerServicio = serviciosCategoria.isEmpty() ? null : serviciosCategoria.get(0);
+        String prefijo = (primerServicio != null && primerServicio.getCategoria() != null && primerServicio.getCategoria().getPrefijo() != null)
+                        ? primerServicio.getCategoria().getPrefijo()
+                        : "SRV";
+
+        // Buscar el siguiente número disponible
+        int maxNumero = 0;
+        for (ServicioCatalogo s : serviciosCategoria) {
+            if (s.getCodigo() != null && s.getCodigo().startsWith(prefijo + "-")) {
+                try {
+                    String numeroStr = s.getCodigo().substring(prefijo.length() + 1);
+                    int numero = Integer.parseInt(numeroStr);
+                    if (numero > maxNumero) {
+                        maxNumero = numero;
+                    }
+                } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
+                    // Ignorar códigos con formato no estándar
+                }
+            }
+        }
+
+        int siguienteNumero = maxNumero + 1;
+        return String.format("%s-%03d", prefijo, siguienteNumero);
     }
 
     public ServicioCatalogo actualizar(Long id, ServicioCatalogo servicioActualizado) {

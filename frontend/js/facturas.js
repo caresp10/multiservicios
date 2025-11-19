@@ -101,8 +101,12 @@ function renderFacturas(data) {
                     <i class="fas fa-eye"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-success" onclick="exportarPDF(${factura.idFactura})"
-                        title="Exportar PDF">
+                        title="Exportar PDF A4">
                     <i class="fas fa-file-pdf"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-primary" onclick="exportarTicket80mm(${factura.idFactura})"
+                        title="Imprimir Ticket 80mm">
+                    <i class="fas fa-receipt"></i>
                 </button>
                 ${factura.estado !== 'ANULADA' ? `
                     <button class="btn btn-sm btn-outline-danger" onclick="abrirModalAnular(${factura.idFactura}, '${factura.numeroFactura}')"
@@ -333,8 +337,11 @@ async function openModalFactura() {
     document.getElementById('detalleOT').style.display = 'none';
     document.getElementById('btnGenerarFactura').style.display = 'none';
 
-    // Cargar OTs terminadas
-    await cargarOrdenesTerminadas();
+    // Cargar OTs terminadas y timbrados
+    await Promise.all([
+        cargarOrdenesTerminadas(),
+        cargarTimbrados()
+    ]);
 
     modal.show();
 }
@@ -403,6 +410,69 @@ document.getElementById('searchOT')?.addEventListener('input', function() {
     );
     renderListaOTs(filtered);
 });
+
+// Cargar timbrado activo vigente para el selector
+async function cargarTimbrados() {
+    const selectTimbrado = document.getElementById('timbrado');
+    const selectEditTimbrado = document.getElementById('editTimbrado');
+
+    try {
+        // Obtener solo timbrados activos (debería haber solo uno)
+        const response = await TimbradoService.getActivos();
+
+        if (response.success && response.data) {
+            const timbrados = response.data;
+
+            // Filtrar solo los que están vigentes (por si acaso)
+            const timbradosVigentes = timbrados.filter(t => {
+                const hoy = new Date();
+                const inicio = new Date(t.fechaInicio);
+                const fin = new Date(t.fechaVencimiento);
+                return inicio <= hoy && fin >= hoy;
+            });
+
+            if (timbradosVigentes.length > 0) {
+                const t = timbradosVigentes[0]; // Solo debería haber uno
+                const fechaVenc = new Date(t.fechaVencimiento);
+                const diasRestantes = Math.ceil((fechaVenc - new Date()) / (1000 * 60 * 60 * 24));
+                let info = `Vence: ${fechaVenc.toLocaleDateString()}`;
+                if (diasRestantes <= 30) {
+                    info += ` (${diasRestantes} días)`;
+                }
+
+                const optionHTML = `<option value="${t.idTimbrado}" data-numero="${t.numero}" data-vencimiento="${t.fechaVencimiento}" selected>${t.numero} - ${info}</option>`;
+
+                if (selectTimbrado) {
+                    selectTimbrado.innerHTML = optionHTML;
+                    // Mostrar info del timbrado automáticamente
+                    document.getElementById('infoTimbrado').textContent =
+                        `Timbrado: ${t.numero} | Vence: ${fechaVenc.toLocaleDateString()}`;
+                }
+
+                if (selectEditTimbrado) {
+                    selectEditTimbrado.innerHTML = optionHTML;
+                    document.getElementById('editInfoTimbrado').textContent =
+                        `Timbrado: ${t.numero} | Vence: ${fechaVenc.toLocaleDateString()}`;
+                }
+            } else {
+                // No hay timbrados vigentes
+                const noTimbradoHTML = '<option value="">No hay timbrado activo</option>';
+                if (selectTimbrado) selectTimbrado.innerHTML = noTimbradoHTML;
+                if (selectEditTimbrado) selectEditTimbrado.innerHTML = noTimbradoHTML;
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Sin timbrado activo',
+                    text: 'No hay un timbrado activo vigente. Debe activar uno antes de generar facturas.',
+                    confirmButtonText: 'Entendido'
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error al cargar timbrados:', error);
+        Swal.fire('Error', 'No se pudo cargar el timbrado activo', 'error');
+    }
+}
 
 async function seleccionarOT(idOt) {
     try {
@@ -682,6 +752,10 @@ async function guardarFactura() {
         todosLosItems.push(facturaItem);
     });
 
+    const timbradoSelect = document.getElementById('timbrado');
+    const timbradoId = timbradoSelect.value ? parseInt(timbradoSelect.value) : null;
+    const timbradoNumero = timbradoSelect.selectedOptions[0]?.dataset.numero || null;
+
     const facturaData = {
         cliente: {
             idCliente: parseInt(document.getElementById('idCliente').value)
@@ -698,7 +772,8 @@ async function guardarFactura() {
         descuento: parseFloat(document.getElementById('descuento').value) || 0,
         iva: iva,
         total: total,
-        timbrado: sanitizeString(document.getElementById('timbrado').value) || null,
+        timbrado: timbradoNumero,
+        timbradoObj: timbradoId ? { idTimbrado: timbradoId } : null,
         fechaVencimiento: document.getElementById('fechaVencimiento').value || null,
         observaciones: sanitizeString(document.getElementById('observaciones').value) || null,
         items: todosLosItems  // ← CAMBIADO: Ahora se envían TODOS los items
@@ -843,8 +918,18 @@ async function verDetallesFactura(id) {
             document.getElementById('verTelefonoCliente').textContent = factura.cliente?.telefono || 'N/A';
             document.getElementById('verEstado').textContent = formatEstado(factura.estado);
             document.getElementById('verFormaPago').textContent = factura.formaPago || 'N/A';
-            document.getElementById('verTimbrado').textContent = factura.timbrado || 'N/A';
-            document.getElementById('verFechaVencimiento').textContent = factura.fechaVencimiento ? formatDate(factura.fechaVencimiento) : 'N/A';
+
+            // Mostrar información del timbrado
+            if (factura.timbradoObj) {
+                const timbradoInfo = `${factura.timbradoObj.numero} (${factura.timbradoObj.establecimiento}-${factura.timbradoObj.puntoExpedicion})`;
+                document.getElementById('verTimbrado').textContent = timbradoInfo;
+                document.getElementById('verFechaVencimiento').textContent = formatDate(factura.timbradoObj.fechaVencimiento);
+            } else {
+                // Fallback al campo string antiguo
+                document.getElementById('verTimbrado').textContent = factura.timbrado || 'N/A';
+                document.getElementById('verFechaVencimiento').textContent = factura.fechaVencimiento ? formatDate(factura.fechaVencimiento) : 'N/A';
+            }
+
             document.getElementById('verObservaciones').textContent = factura.observaciones || '-';
 
             // Cargar items
@@ -913,7 +998,8 @@ async function exportarPDF(id) {
                                     <h2>FACTURA</h2>
                                     <p><strong>Nº:</strong> ${factura.numeroFactura}</p>
                                     <p><strong>Fecha:</strong> ${formatDate(factura.fechaEmision)}</p>
-                                    <p><strong>Timbrado:</strong> ${factura.timbrado || 'N/A'}</p>
+                                    <p><strong>Timbrado:</strong> ${factura.timbradoObj ? `${factura.timbradoObj.numero} (${factura.timbradoObj.establecimiento}-${factura.timbradoObj.puntoExpedicion})` : (factura.timbrado || 'N/A')}</p>
+                                    <p><strong>Válido hasta:</strong> ${factura.timbradoObj ? formatDate(factura.timbradoObj.fechaVencimiento) : (factura.fechaVencimiento ? formatDate(factura.fechaVencimiento) : 'N/A')}</p>
                                 </div>
                                 <div class="col-6 text-end">
                                     <h4>MULTISERVICIOS</h4>
@@ -1005,6 +1091,241 @@ async function exportarPDF(id) {
     }
 }
 
+// Exportar factura en formato ticket 80mm
+async function exportarTicket80mm(id) {
+    try {
+        const response = await FacturaService.getById(id);
+
+        if (response.success && response.data) {
+            const factura = response.data;
+
+            // Crear ventana de impresión para ticket de 80mm
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Ticket ${factura.numeroFactura}</title>
+                    <style>
+                        /* Configuración para papel de 80mm (aprox 302px a 96dpi) */
+                        @page {
+                            size: 80mm auto;
+                            margin: 0;
+                        }
+
+                        @media print {
+                            .no-print { display: none; }
+                            body { margin: 0; }
+                        }
+
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }
+
+                        body {
+                            font-family: 'Courier New', monospace;
+                            font-size: 10px;
+                            line-height: 1.3;
+                            width: 80mm;
+                            padding: 5mm;
+                            background: white;
+                        }
+
+                        .ticket-header {
+                            text-align: center;
+                            border-bottom: 1px dashed #000;
+                            padding-bottom: 5px;
+                            margin-bottom: 8px;
+                        }
+
+                        .ticket-header h2 {
+                            font-size: 14px;
+                            font-weight: bold;
+                            margin-bottom: 3px;
+                        }
+
+                        .ticket-header p {
+                            font-size: 9px;
+                            margin: 1px 0;
+                        }
+
+                        .factura-info {
+                            margin-bottom: 8px;
+                            padding-bottom: 5px;
+                            border-bottom: 1px dashed #000;
+                        }
+
+                        .factura-info p {
+                            margin: 2px 0;
+                            font-size: 9px;
+                        }
+
+                        .cliente-info {
+                            margin-bottom: 8px;
+                            padding-bottom: 5px;
+                            border-bottom: 1px dashed #000;
+                        }
+
+                        .cliente-info p {
+                            margin: 2px 0;
+                            font-size: 9px;
+                        }
+
+                        .items {
+                            margin-bottom: 8px;
+                        }
+
+                        .item {
+                            margin-bottom: 5px;
+                            font-size: 9px;
+                        }
+
+                        .item-desc {
+                            font-weight: bold;
+                        }
+
+                        .item-details {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-top: 2px;
+                        }
+
+                        .totales {
+                            border-top: 1px dashed #000;
+                            padding-top: 5px;
+                            margin-top: 8px;
+                        }
+
+                        .total-line {
+                            display: flex;
+                            justify-content: space-between;
+                            margin: 3px 0;
+                            font-size: 9px;
+                        }
+
+                        .total-line.final {
+                            font-size: 11px;
+                            font-weight: bold;
+                            margin-top: 5px;
+                            padding-top: 5px;
+                            border-top: 1px solid #000;
+                        }
+
+                        .footer {
+                            text-align: center;
+                            margin-top: 10px;
+                            padding-top: 5px;
+                            border-top: 1px dashed #000;
+                            font-size: 8px;
+                        }
+
+                        .footer p {
+                            margin: 2px 0;
+                        }
+
+                        .no-print {
+                            text-align: center;
+                            margin-top: 15px;
+                        }
+
+                        .no-print button {
+                            padding: 8px 15px;
+                            margin: 0 5px;
+                            cursor: pointer;
+                            font-size: 11px;
+                        }
+
+                        .text-right {
+                            text-align: right;
+                        }
+
+                        .bold {
+                            font-weight: bold;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="ticket-header">
+                        <h2>MULTISERVICIOS</h2>
+                        <p>RUC: XXXXXXXXX-X</p>
+                        <p>Dirección comercial</p>
+                        <p>Tel: XXX-XXXX</p>
+                    </div>
+
+                    <div class="factura-info">
+                        <p class="bold">FACTURA N°: ${factura.numeroFactura}</p>
+                        <p>Fecha: ${formatDate(factura.fechaEmision)}</p>
+                        <p>Timbrado: ${factura.timbradoObj ? `${factura.timbradoObj.numero}` : (factura.timbrado || 'N/A')}</p>
+                        <p>Válido hasta: ${factura.timbradoObj ? formatDate(factura.timbradoObj.fechaVencimiento) : (factura.fechaVencimiento ? formatDate(factura.fechaVencimiento) : 'N/A')}</p>
+                        ${factura.timbradoObj ? `<p>Punto: ${factura.timbradoObj.establecimiento}-${factura.timbradoObj.puntoExpedicion}</p>` : ''}
+                    </div>
+
+                    <div class="cliente-info">
+                        <p class="bold">CLIENTE</p>
+                        <p>${factura.cliente?.nombre || 'N/A'} ${factura.cliente?.apellido || ''}</p>
+                        <p>Doc: ${factura.cliente?.rucCi || factura.cliente?.documento || 'N/A'}</p>
+                        ${factura.cliente?.telefono ? `<p>Tel: ${factura.cliente.telefono}</p>` : ''}
+                    </div>
+
+                    <div class="items">
+                        <p class="bold" style="border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 5px;">ITEMS</p>
+                        ${factura.items && factura.items.length > 0 ? factura.items.map(item => `
+                            <div class="item">
+                                <div class="item-desc">${item.descripcion}</div>
+                                <div class="item-details">
+                                    <span>${formatNumber(item.cantidad)} x ${formatMoney(item.precioUnitario)}</span>
+                                    <span class="bold">${formatMoney(item.subtotal)}</span>
+                                </div>
+                            </div>
+                        `).join('') : '<p style="text-align: center;">No hay items</p>'}
+                    </div>
+
+                    <div class="totales">
+                        <div class="total-line">
+                            <span>Subtotal:</span>
+                            <span>${formatMoney(factura.subtotal)}</span>
+                        </div>
+                        ${factura.descuento && factura.descuento > 0 ? `
+                        <div class="total-line">
+                            <span>Descuento:</span>
+                            <span>-${formatMoney(factura.descuento)}</span>
+                        </div>
+                        ` : ''}
+                        <div class="total-line">
+                            <span>IVA (10%):</span>
+                            <span>${formatMoney(factura.iva)}</span>
+                        </div>
+                        <div class="total-line final">
+                            <span>TOTAL:</span>
+                            <span>${formatMoney(factura.total)}</span>
+                        </div>
+                    </div>
+
+                    <div class="footer">
+                        <p>Forma de Pago: ${factura.formaPago || 'N/A'}</p>
+                        <p>Estado: ${formatEstado(factura.estado)}</p>
+                        ${factura.observaciones ? `<p>Obs: ${factura.observaciones}</p>` : ''}
+                        <p style="margin-top: 8px;">¡Gracias por su preferencia!</p>
+                    </div>
+
+                    <div class="no-print">
+                        <button onclick="window.print()">🖨️ Imprimir</button>
+                        <button onclick="window.close()">✖ Cerrar</button>
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+    } catch (error) {
+        console.error('Error exportando ticket:', error);
+        alert('Error al exportar el ticket');
+    }
+}
+
 // =====================================================
 // FUNCIONES PARA SELECTOR DE SERVICIOS Y REPUESTOS
 // =====================================================
@@ -1015,11 +1336,14 @@ async function cargarServiciosFactura() {
         const response = await ServicioCatalogoService.getActivos();
         if (response.success && response.data) {
             serviciosCatalogo = response.data;
+            console.log('Servicios cargados:', serviciosCatalogo.length);
+            console.log('Detalles de servicios:', serviciosCatalogo.map(s => `${s.codigo} - ${s.nombre}: ${s.precioBase}`));
+
             const select = document.getElementById('selectServicioFactura');
             select.innerHTML = '<option value="">Seleccione un servicio...</option>' +
                 serviciosCatalogo.map(servicio => `
                     <option value="${servicio.idServicio}">
-                        ${servicio.nombre} - ${formatCurrency(servicio.precioVenta)}
+                        ${servicio.nombre} - ${formatCurrency(servicio.precioBase)}
                     </option>
                 `).join('');
         }
@@ -1034,6 +1358,9 @@ async function cargarRepuestosFactura() {
         const response = await RepuestoService.getActivos();
         if (response.success && response.data) {
             repuestosCatalogo = response.data;
+            console.log('Repuestos cargados en facturas:', repuestosCatalogo.length);
+            console.log('Detalles de repuestos:', repuestosCatalogo.map(r => `${r.codigo} - ${r.nombre}: Stock=${r.stockActual}, Precio=${r.precioVenta}`));
+
             const select = document.getElementById('selectRepuestoFactura');
             select.innerHTML = '<option value="">Seleccione un repuesto...</option>' +
                 repuestosCatalogo.map(repuesto => {
@@ -1075,7 +1402,7 @@ function seleccionarServicioFactura() {
     servicioSeleccionadoFactura = serviciosCatalogo.find(s => s.idServicio === servicioId);
 
     if (servicioSeleccionadoFactura) {
-        document.getElementById('servicioPrecioFactura').value = servicioSeleccionadoFactura.precioVenta;
+        document.getElementById('servicioPrecioFactura').value = servicioSeleccionadoFactura.precioBase;
         document.getElementById('servicioDescripcionTextFactura').textContent =
             `${servicioSeleccionadoFactura.nombre} - ${servicioSeleccionadoFactura.categoria?.nombre || 'Sin categoría'}`;
         document.getElementById('servicioInfoFactura').style.display = 'block';
@@ -1245,14 +1572,24 @@ let modalAnularFactura;
 let facturaActual = null;
 
 // Abrir modal de edición desde el modal de detalles
-function abrirModalEditar() {
+async function abrirModalEditar() {
     if (!facturaActual) return;
+
+    // Cargar timbrados primero
+    await cargarTimbrados();
 
     document.getElementById('editIdFactura').value = facturaActual.idFactura;
     document.getElementById('editNumeroFactura').value = facturaActual.numeroFactura;
     document.getElementById('editFormaPago').value = facturaActual.formaPago || '';
     document.getElementById('editEstado').value = facturaActual.estado || '';
-    document.getElementById('editTimbrado').value = facturaActual.timbrado || '';
+
+    // Setear el timbrado por ID si existe la relación
+    if (facturaActual.timbradoObj && facturaActual.timbradoObj.idTimbrado) {
+        document.getElementById('editTimbrado').value = facturaActual.timbradoObj.idTimbrado;
+        // Trigger del evento change para mostrar info
+        document.getElementById('editTimbrado').dispatchEvent(new Event('change'));
+    }
+
     document.getElementById('editFechaVencimiento').value = facturaActual.fechaVencimiento || '';
     document.getElementById('editObservaciones').value = facturaActual.observaciones || '';
 
@@ -1265,7 +1602,9 @@ async function guardarEdicionFactura() {
     const id = document.getElementById('editIdFactura').value;
     const formaPago = document.getElementById('editFormaPago').value;
     const estado = document.getElementById('editEstado').value;
-    const timbrado = document.getElementById('editTimbrado').value;
+    const timbradoSelect = document.getElementById('editTimbrado');
+    const timbradoId = timbradoSelect.value ? parseInt(timbradoSelect.value) : null;
+    const timbradoNumero = timbradoSelect.selectedOptions[0]?.dataset.numero || null;
     const fechaVencimiento = document.getElementById('editFechaVencimiento').value;
     const observaciones = document.getElementById('editObservaciones').value;
 
@@ -1278,7 +1617,8 @@ async function guardarEdicionFactura() {
         const facturaData = {
             formaPago: formaPago,
             estado: estado,
-            timbrado: timbrado || null,
+            timbrado: timbradoNumero,
+            timbradoObj: timbradoId ? { idTimbrado: timbradoId } : null,
             fechaVencimiento: fechaVencimiento || null,
             observaciones: observaciones || null
         };

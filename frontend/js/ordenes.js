@@ -286,13 +286,25 @@ function mostrarTrabajoTecnico(orden) {
                                  orden.horasTrabajadas || orden.costoManoObra;
 
     if (tieneTrabajoTecnico) {
+        // Calcular costo de mano de obra desde servicios del presupuesto
+        let costoManoObraCalculado = 0;
+        if (orden.presupuesto && orden.presupuesto.items && orden.presupuesto.items.length > 0) {
+            costoManoObraCalculado = orden.presupuesto.items
+                .filter(item => item.tipoItem === 'SERVICIO')
+                .reduce((total, item) => total + (parseFloat(item.subtotal) || 0), 0);
+        }
+
         // Llenar campos
         document.getElementById('viewDiagnostico').value = orden.diagnosticoTecnico || 'No especificado';
         document.getElementById('viewInforme').value = orden.informeFinal || 'No especificado';
         document.getElementById('viewHoras').value = orden.horasTrabajadas ?
             `${orden.horasTrabajadas} horas` : 'No especificado';
-        document.getElementById('viewCostoManoObra').value = orden.costoManoObra ?
-            formatMoney(orden.costoManoObra) : 'No especificado';
+
+        // Mostrar el costo de mano de obra calculado desde servicios o el guardado
+        const costoManoObraFinal = costoManoObraCalculado > 0 ? costoManoObraCalculado : (orden.costoManoObra || 0);
+        document.getElementById('viewCostoManoObra').value = costoManoObraFinal > 0 ?
+            formatMoney(costoManoObraFinal) : 'No especificado';
+
         document.getElementById('viewPresupuestoFinal').value = orden.presupuestoFinal ?
             formatMoney(orden.presupuestoFinal) : (orden.presupuesto?.total ? formatMoney(orden.presupuesto.total) : 'No especificado');
 
@@ -459,8 +471,20 @@ function abrirModalRevision(orden) {
     document.getElementById('revDiagnostico').value = orden.diagnosticoTecnico || '';
     document.getElementById('revInforme').value = orden.informeFinal || '';
     document.getElementById('revHoras').value = orden.horasTrabajadas ? `${orden.horasTrabajadas} horas` : 'N/A';
-    document.getElementById('revCostoManoObra').value = orden.costoManoObra ?
-        formatMoney(orden.costoManoObra) : 'N/A';
+
+    // Calcular costo de mano de obra desde servicios del presupuesto
+    let costoManoObraCalculado = 0;
+    if (orden.presupuesto && orden.presupuesto.items && orden.presupuesto.items.length > 0) {
+        costoManoObraCalculado = orden.presupuesto.items
+            .filter(item => item.tipoItem === 'SERVICIO')
+            .reduce((total, item) => total + (parseFloat(item.subtotal) || 0), 0);
+    }
+
+    // Mostrar el costo de mano de obra calculado desde servicios o el guardado
+    const costoManoObraFinal = costoManoObraCalculado > 0 ? costoManoObraCalculado : (orden.costoManoObra || 0);
+    document.getElementById('revCostoManoObra').value = costoManoObraFinal > 0 ?
+        formatMoney(costoManoObraFinal) : 'N/A';
+
     document.getElementById('revPresupuestoInicial').value = orden.presupuesto?.total ?
         formatMoney(orden.presupuesto.total) : 'N/A';
 

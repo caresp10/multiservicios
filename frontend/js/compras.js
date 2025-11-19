@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
         repuestoSelect.addEventListener('change', function() {
             const idRepuesto = parseInt(this.value);
             const repuesto = repuestos.find(r => r.idRepuesto === idRepuesto);
-            document.getElementById('precioDetalle').value = repuesto ? repuesto.precioVenta : 0;
+            document.getElementById('precioDetalle').value = repuesto ? repuesto.precioCosto : 0;
         });
     }
 });
@@ -68,11 +68,15 @@ async function cargarRepuestos() {
     try {
         const data = await ApiService.get('/repuestos');
         if (data.success) {
+            console.log('Total repuestos recibidos del backend:', data.data.length);
             repuestos = data.data.filter(r => r.activo);
+            console.log('Repuestos activos después del filtro:', repuestos.length);
+            console.log('Lista de repuestos activos:', repuestos.map(r => `${r.codigo} - ${r.nombre} (activo: ${r.activo})`));
+
             const select = document.getElementById('repuestoSelect');
             select.innerHTML = '<option value="">Seleccione un repuesto</option>';
             repuestos.forEach(r => {
-                select.innerHTML += `<option value="${r.idRepuesto}" data-precio="${r.precioCompra}">${r.codigo} - ${r.nombre}</option>`;
+                select.innerHTML += `<option value="${r.idRepuesto}" data-precio="${r.precioCosto}">${r.codigo} - ${r.nombre}</option>`;
             });
         }
     } catch (error) {
@@ -400,13 +404,6 @@ function displayUserInfo() {
         document.getElementById('userName').textContent = user.nombre;
         document.getElementById('userRole').textContent = user.rol;
         document.getElementById('userAvatar').textContent = user.nombre.charAt(0).toUpperCase();
-        // Mostrar token y rol para depuración
-        const infoDiv = document.createElement('div');
-        infoDiv.style.fontSize = '0.8em';
-        infoDiv.style.wordBreak = 'break-all';
-        infoDiv.className = 'text-muted mt-2';
-        infoDiv.innerHTML = `<strong>Token:</strong> ${AuthService.getToken() || '-'}<br><strong>Rol:</strong> ${user.rol}`;
-        document.querySelector('.user-info').appendChild(infoDiv);
     }
 }
 

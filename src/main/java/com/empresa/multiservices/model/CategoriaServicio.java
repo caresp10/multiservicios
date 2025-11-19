@@ -18,10 +18,13 @@ public class CategoriaServicio {
     
     @Column(nullable = false, length = 100)
     private String nombre;
-    
+
+    @Column(unique = true, length = 10)
+    private String prefijo;  // Ej: "ELEC", "MECAN", "PINTU"
+
     @Column(columnDefinition = "TEXT")
     private String descripcion;
-    
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean activo = true;

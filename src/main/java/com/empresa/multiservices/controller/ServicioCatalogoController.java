@@ -100,4 +100,16 @@ public class ServicioCatalogoController {
         List<HistoricoPreciosServicio> historico = servicioCatalogoService.obtenerHistoricoPrecios(id);
         return ResponseEntity.ok(ApiResponse.success("Histórico de precios", historico));
     }
+
+    @GetMapping("/generar-codigo/{idCategoria}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
+    public ResponseEntity<ApiResponse> generarCodigoPorCategoria(@PathVariable Long idCategoria) {
+        try {
+            String codigoSugerido = servicioCatalogoService.generarCodigoPorCategoria(idCategoria);
+            return ResponseEntity.ok(ApiResponse.success("Código generado", codigoSugerido));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al generar código: " + e.getMessage()));
+        }
+    }
 }

@@ -137,4 +137,28 @@ public class RepuestoController {
         repuestoService.activar(id);
         return ResponseEntity.ok(ApiResponse.success("Repuesto activado exitosamente", null));
     }
+
+    @GetMapping("/generar-codigo")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
+    public ResponseEntity<ApiResponse> generarCodigo() {
+        try {
+            String codigoSugerido = repuestoService.generarCodigoAutomatico();
+            return ResponseEntity.ok(ApiResponse.success("Código generado", codigoSugerido));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al generar código: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/generar-codigo/{idCategoria}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
+    public ResponseEntity<ApiResponse> generarCodigoPorCategoria(@PathVariable Long idCategoria) {
+        try {
+            String codigoSugerido = repuestoService.generarCodigoPorCategoria(idCategoria);
+            return ResponseEntity.ok(ApiResponse.success("Código generado", codigoSugerido));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al generar código: " + e.getMessage()));
+        }
+    }
 }

@@ -94,10 +94,10 @@ function renderServicios(data) {
                         title="Editar">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-${servicio.activo ? 'warning' : 'success'}"
-                        onclick="toggleEstadoServicio(${servicio.idServicio}, ${servicio.activo})"
-                        title="${servicio.activo ? 'Desactivar' : 'Activar'}">
-                    <i class="fas fa-${servicio.activo ? 'toggle-on' : 'toggle-off'}"></i>
+                <button class="btn btn-sm btn-outline-danger"
+                        onclick="eliminarServicio(${servicio.idServicio})"
+                        title="Eliminar">
+                    <i class="fas fa-trash"></i>
                 </button>
             </td>
         </tr>
@@ -265,19 +265,16 @@ async function guardarServicio() {
     }
 }
 
-// Toggle estado del servicio (activar/desactivar)
-async function toggleEstadoServicio(id, estadoActual) {
-    const accion = estadoActual ? 'desactivar' : 'activar';
-    const accionCapital = estadoActual ? 'Desactivar' : 'Activar';
-
+// Eliminar servicio
+async function eliminarServicio(id) {
     const result = await Swal.fire({
         title: '¿Está seguro?',
-        text: `El servicio será ${accion}do`,
+        text: 'El servicio será desactivado',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: estadoActual ? '#f0ad4e' : '#28a745',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: `Sí, ${accion}`,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, desactivar',
         cancelButtonText: 'Cancelar'
     });
 
@@ -289,18 +286,14 @@ async function toggleEstadoServicio(id, estadoActual) {
         const response = await ServicioCatalogoService.delete(id);
 
         if (response.success) {
-            await Swal.fire(
-                `${accionCapital}do`,
-                `El servicio ha sido ${accion}do correctamente`,
-                'success'
-            );
+            await Swal.fire('Desactivado', 'El servicio ha sido desactivado correctamente', 'success');
             cargarServicios();
         } else {
-            await Swal.fire('Error', response.message || `Error al ${accion} el servicio`, 'error');
+            await Swal.fire('Error', response.message || 'Error al desactivar el servicio', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        await Swal.fire('Error', `Error al ${accion} el servicio`, 'error');
+        await Swal.fire('Error', 'Error al desactivar el servicio', 'error');
     }
 }
 

@@ -27,6 +27,7 @@ public class FacturaService {
     private final RepuestoRepository repuestoRepository;
     private final MovimientoStockRepository movimientoStockRepository;
     private final ServicioCatalogoRepository servicioCatalogoRepository;
+    private final TimbradoService timbradoService;
 
     @Transactional(readOnly = true)
     public List<Factura> listarTodas() {
@@ -108,9 +109,24 @@ public class FacturaService {
             }
         }
 
-        // Generar número de factura si no existe
+        // Validar y cargar el timbrado
+        Timbrado timbrado = null;
+        if (factura.getTimbradoObj() != null && factura.getTimbradoObj().getIdTimbrado() != null) {
+            timbrado = timbradoService.obtenerPorId(factura.getTimbradoObj().getIdTimbrado());
+            factura.setTimbradoObj(timbrado);
+            factura.setTimbrado(timbrado.getNumero());
+            factura.setFechaVencimiento(timbrado.getFechaVencimiento());
+        }
+
+        // Generar número de factura desde el timbrado
         if (factura.getNumeroFactura() == null || factura.getNumeroFactura().trim().isEmpty()) {
-            factura.setNumeroFactura(generarNumeroFactura());
+            if (timbrado != null) {
+                String siguienteNumero = timbradoService.obtenerSiguienteNumeroFactura(timbrado.getIdTimbrado());
+                factura.setNumeroFactura(siguienteNumero);
+            } else {
+                // Fallback: generar número sin timbrado (no recomendado)
+                factura.setNumeroFactura(generarNumeroFactura());
+            }
         }
 
         // El pedido debe existir (viene de la OT o es requerido)

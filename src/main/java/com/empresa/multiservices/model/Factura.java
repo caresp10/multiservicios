@@ -90,7 +90,12 @@ public class Factura {
     
     @Column(length = 20)
     private String timbrado;
-    
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_timbrado")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Timbrado timbradoObj;
+
     @OneToMany(mappedBy = "factura", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<FacturaItem> items = new ArrayList<>();

@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Base de datos MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: multiservicios-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: multiservices_db
+      MYSQL_USER: multiservices_user
+      MYSQL_PASSWORD: MultiServ2024!
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/multiservicios_completo.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - multiservicios-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Spring Boot
+  backend:
+    build: .
+    container_name: multiservicios-backend
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/multiservices_db?useSSL=false&serverTimezone=America/Asuncion&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: multiservices_user
+      SPRING_DATASOURCE_PASSWORD: MultiServ2024!
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - multiservicios-network
+
+  # Frontend con Nginx
+  frontend:
+    image: nginx:alpine
+    container_name: multiservicios-frontend
+    restart: unless-stopped
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8082:80"
+    depends_on:
+      - backend
+    networks:
+      - multiservicios-network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  multiservicios-network:
+    driver: bridge

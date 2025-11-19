@@ -614,7 +614,7 @@ function renderChartFacturacionMensual(facturas) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -672,7 +672,7 @@ function renderChartEstadosPedidos(pedidos) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 legend: { position: 'bottom' }
             }
@@ -720,7 +720,7 @@ function renderChartStockBajo(repuestos) {
         options: {
             indexAxis: 'y',
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 legend: { position: 'top' }
             },
@@ -759,7 +759,7 @@ function renderChartPrecioMargen(repuestos) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 tooltip: {
                     callbacks: {
@@ -808,7 +808,7 @@ function renderChartTopServicios(topServicios) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -849,7 +849,7 @@ function renderChartServiciosVsRepuestos(totalServicios, totalRepuestos) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 legend: { position: 'bottom' },
                 tooltip: {

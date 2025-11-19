@@ -349,3 +349,49 @@ class RepuestoService {
         return ApiService.get(`/repuestos/${id}/movimientos-stock`);
     }
 }
+
+class TimbradoService {
+    static getAll() {
+        return ApiService.get('/timbrados');
+    }
+
+    static getActivos() {
+        return ApiService.get('/timbrados/activos');
+    }
+
+    static getVigentes() {
+        return ApiService.get('/timbrados/vigentes');
+    }
+
+    static getProximosAVencer(dias = 30) {
+        return ApiService.get(`/timbrados/proximos-vencer?dias=${dias}`);
+    }
+
+    static getVencidos() {
+        return ApiService.get('/timbrados/vencidos');
+    }
+
+    static getParaFacturar() {
+        return ApiService.get('/timbrados/para-facturar');
+    }
+
+    static getById(id) {
+        return ApiService.get(`/timbrados/${id}`);
+    }
+
+    static create(timbrado) {
+        return ApiService.post('/timbrados', timbrado);
+    }
+
+    static update(id, timbrado) {
+        return ApiService.put(`/timbrados/${id}`, timbrado);
+    }
+
+    static delete(id) {
+        return ApiService.delete(`/timbrados/${id}`);
+    }
+
+    static activar(id) {
+        return ApiService.put(`/timbrados/${id}/activar`, {});
+    }
+}

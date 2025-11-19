@@ -150,7 +150,7 @@ body {
 }
 
 .sidebar-menu .menu-item-submenu.open .submenu {
-    max-height: 200px !important;
+    max-height: 350px !important;
     opacity: 1 !important;
     visibility: visible !important;
 }

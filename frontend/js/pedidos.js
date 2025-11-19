@@ -68,7 +68,7 @@ function renderPedidos(data) {
             <td>${pedido.categoria?.nombre || 'N/A'}</td>
             <td>${pedido.descripcion.substring(0, 50)}${pedido.descripcion.length > 50 ? '...' : ''}</td>
             <td>
-                <span class="badge bg-info">${pedido.canal}</span>
+                <span class="badge bg-${getCanalClass(pedido.canal)}">${pedido.canal}</span>
             </td>
             <td>
                 <span class="badge bg-${
@@ -77,7 +77,7 @@ function renderPedidos(data) {
                 }">${pedido.prioridad}</span>
             </td>
             <td>
-                <span class="badge-estado badge-${getEstadoClass(pedido.estado)}">
+                <span class="badge bg-${getEstadoClass(pedido.estado)}">
                     ${formatEstado(pedido.estado)}
                 </span>
             </td>
@@ -281,12 +281,23 @@ function formatEstado(estado) {
 
 function getEstadoClass(estado) {
     const classes = {
-        'NUEVO': 'nuevo',
-        'EN_PROCESO': 'en-proceso',
-        'COMPLETADO': 'completado',
-        'CANCELADO': 'cancelado'
+        'NUEVO': 'primary',         // Azul para nuevos pedidos
+        'EN_PROCESO': 'warning',    // Amarillo/Naranja para en proceso
+        'COMPLETADO': 'success',    // Verde para completados
+        'CANCELADO': 'danger'       // Rojo para cancelados
     };
-    return classes[estado] || 'nuevo';
+    return classes[estado] || 'primary';
+}
+
+function getCanalClass(canal) {
+    const classes = {
+        'TELEFONO': 'info',         // Azul claro para teléfono
+        'WHATSAPP': 'success',      // Verde para WhatsApp
+        'EMAIL': 'warning',         // Amarillo para email
+        'PRESENCIAL': 'primary',    // Azul para presencial
+        'WEB': 'secondary'          // Gris para web
+    };
+    return classes[canal] || 'info';
 }
 
 // Inicializar

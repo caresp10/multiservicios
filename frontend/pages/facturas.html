@@ -470,8 +470,11 @@
                                                             </select>
                                                         </div>
                                                         <div class="mb-2">
-                                                            <label class="form-label">Timbrado</label>
-                                                            <input type="text" class="form-control form-select-sm" id="timbrado" maxlength="20" placeholder="Ingrese timbrado">
+                                                            <label class="form-label">Timbrado *</label>
+                                                            <select class="form-select form-select-sm" id="timbrado" required>
+                                                                <option value="">Seleccione timbrado...</option>
+                                                            </select>
+                                                            <small class="text-muted" id="infoTimbrado"></small>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -686,8 +689,11 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Timbrado</label>
-                        <input type="text" class="form-control" id="editTimbrado" maxlength="20">
+                        <label class="form-label">Timbrado *</label>
+                        <select class="form-select" id="editTimbrado" required>
+                            <option value="">Seleccione timbrado...</option>
+                        </select>
+                        <small class="text-muted" id="editInfoTimbrado"></small>
                     </div>
 
                     <div class="mb-3">
