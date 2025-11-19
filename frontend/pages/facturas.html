@@ -634,8 +634,131 @@
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="btnEditarFactura">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         <i class="fas fa-times"></i> Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Factura -->
+    <div class="modal fade" id="modalEditarFactura" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">
+                        <i class="fas fa-edit"></i> Editar Factura
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editIdFactura">
+
+                    <div class="mb-3">
+                        <label class="form-label">Número de Factura</label>
+                        <input type="text" class="form-control" id="editNumeroFactura" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><i class="fas fa-credit-card"></i> Forma de Pago</label>
+                        <select class="form-select" id="editFormaPago" required>
+                            <option value="">Seleccione...</option>
+                            <option value="EFECTIVO">Efectivo</option>
+                            <option value="TARJETA">Tarjeta</option>
+                            <option value="TRANSFERENCIA">Transferencia</option>
+                            <option value="CHEQUE">Cheque</option>
+                            <option value="CREDITO">Crédito</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><i class="fas fa-tag"></i> Estado</label>
+                        <select class="form-select" id="editEstado" required>
+                            <option value="">Seleccione...</option>
+                            <option value="PENDIENTE">Pendiente</option>
+                            <option value="PAGADA">Pagada</option>
+                            <option value="VENCIDA">Vencida</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Timbrado</label>
+                        <input type="text" class="form-control" id="editTimbrado" maxlength="20">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de Vencimiento</label>
+                        <input type="date" class="form-control" id="editFechaVencimiento">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="editObservaciones" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="guardarEdicionFactura()">
+                        <i class="fas fa-save"></i> Guardar Cambios
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Anular Factura -->
+    <div class="modal fade" id="modalAnularFactura" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-ban"></i> Anular Factura
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="anularIdFactura">
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Advertencia:</strong> Esta acción NO se puede deshacer. La factura será marcada como ANULADA.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Número de Factura</label>
+                        <input type="text" class="form-control" id="anularNumeroFactura" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><span class="text-danger">*</span> Motivo de Anulación</label>
+                        <select class="form-select" id="anularMotivo" required>
+                            <option value="">Seleccione un motivo...</option>
+                            <option value="ERROR_FACTURACION">Error en la facturación</option>
+                            <option value="CANCELACION_CLIENTE">Cancelación por parte del cliente</option>
+                            <option value="DUPLICADO">Factura duplicada</option>
+                            <option value="DEVOLUCION">Devolución de productos/servicios</option>
+                            <option value="OTRO">Otro motivo</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="anularDetalleMotivo" style="display: none;">
+                        <label class="form-label"><span class="text-danger">*</span> Detalle del Motivo</label>
+                        <textarea class="form-control" id="anularDetalleTexto" rows="3"
+                                  placeholder="Describa el motivo de anulación..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="confirmarAnularFactura()">
+                        <i class="fas fa-ban"></i> Anular Factura
                     </button>
                 </div>
             </div>

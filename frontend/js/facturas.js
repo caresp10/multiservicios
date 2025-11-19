@@ -104,10 +104,14 @@ function renderFacturas(data) {
                         title="Exportar PDF">
                     <i class="fas fa-file-pdf"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="eliminarFactura(${factura.idFactura})"
-                        title="Eliminar">
-                    <i class="fas fa-trash"></i>
-                </button>
+                ${factura.estado !== 'ANULADA' ? `
+                    <button class="btn btn-sm btn-outline-danger" onclick="abrirModalAnular(${factura.idFactura}, '${factura.numeroFactura}')"
+                            title="Anular Factura">
+                        <i class="fas fa-ban"></i>
+                    </button>
+                ` : `
+                    <span class="badge bg-secondary">ANULADA</span>
+                `}
             </td>
         </tr>
     `).join('');
@@ -828,12 +832,13 @@ async function verDetallesFactura(id) {
 
         if (response.success && response.data) {
             const factura = response.data;
+            facturaActual = factura;  // Guardar para uso en edición
 
             // Cargar datos en el modal
             document.getElementById('verNumeroFactura').textContent = factura.numeroFactura;
             document.getElementById('verFechaEmision').textContent = formatDate(factura.fechaEmision);
             document.getElementById('verCliente').textContent = `${factura.cliente?.nombre || 'N/A'} ${factura.cliente?.apellido || ''}`;
-            document.getElementById('verDocumento').textContent = factura.cliente?.documento || 'N/A';
+            document.getElementById('verDocumento').textContent = factura.cliente?.rucCi || 'N/A';
             document.getElementById('verDireccionCliente').textContent = factura.cliente?.direccion || 'N/A';
             document.getElementById('verTelefonoCliente').textContent = factura.cliente?.telefono || 'N/A';
             document.getElementById('verEstado').textContent = formatEstado(factura.estado);
@@ -1231,15 +1236,171 @@ function getTipoItemBadge(tipoItem) {
     return badges[tipoItem] || '<span class="badge bg-secondary">Manual</span>';
 }
 
+// ========================================
+// EDICIÓN Y ANULACIÓN DE FACTURAS
+// ========================================
+
+let modalEditarFactura;
+let modalAnularFactura;
+let facturaActual = null;
+
+// Abrir modal de edición desde el modal de detalles
+function abrirModalEditar() {
+    if (!facturaActual) return;
+
+    document.getElementById('editIdFactura').value = facturaActual.idFactura;
+    document.getElementById('editNumeroFactura').value = facturaActual.numeroFactura;
+    document.getElementById('editFormaPago').value = facturaActual.formaPago || '';
+    document.getElementById('editEstado').value = facturaActual.estado || '';
+    document.getElementById('editTimbrado').value = facturaActual.timbrado || '';
+    document.getElementById('editFechaVencimiento').value = facturaActual.fechaVencimiento || '';
+    document.getElementById('editObservaciones').value = facturaActual.observaciones || '';
+
+    modalDetallesFactura.hide();
+    modalEditarFactura.show();
+}
+
+// Guardar edición de factura
+async function guardarEdicionFactura() {
+    const id = document.getElementById('editIdFactura').value;
+    const formaPago = document.getElementById('editFormaPago').value;
+    const estado = document.getElementById('editEstado').value;
+    const timbrado = document.getElementById('editTimbrado').value;
+    const fechaVencimiento = document.getElementById('editFechaVencimiento').value;
+    const observaciones = document.getElementById('editObservaciones').value;
+
+    if (!formaPago || !estado) {
+        alert('Por favor complete los campos requeridos');
+        return;
+    }
+
+    try {
+        const facturaData = {
+            formaPago: formaPago,
+            estado: estado,
+            timbrado: timbrado || null,
+            fechaVencimiento: fechaVencimiento || null,
+            observaciones: observaciones || null
+        };
+
+        const response = await FacturaService.update(id, facturaData);
+
+        if (response.success) {
+            modalEditarFactura.hide();
+            await cargarFacturas();
+            alert('Factura actualizada exitosamente');
+        } else {
+            throw new Error(response.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al actualizar la factura: ' + error.message);
+    }
+}
+
+// Abrir modal de anulación
+function abrirModalAnular(id, numeroFactura) {
+    document.getElementById('anularIdFactura').value = id;
+    document.getElementById('anularNumeroFactura').value = numeroFactura;
+    document.getElementById('anularMotivo').value = '';
+    document.getElementById('anularDetalleTexto').value = '';
+    document.getElementById('anularDetalleMotivo').style.display = 'none';
+
+    modalAnularFactura.show();
+}
+
+// Confirmar anulación de factura
+async function confirmarAnularFactura() {
+    const id = document.getElementById('anularIdFactura').value;
+    const motivo = document.getElementById('anularMotivo').value;
+    const detalleTexto = document.getElementById('anularDetalleTexto').value;
+
+    if (!motivo) {
+        alert('Por favor seleccione un motivo de anulación');
+        return;
+    }
+
+    if (motivo === 'OTRO' && !detalleTexto.trim()) {
+        alert('Por favor describa el motivo de anulación');
+        return;
+    }
+
+    const motivoCompleto = motivo === 'OTRO' ? detalleTexto : formatMotivoAnulacion(motivo);
+
+    if (!confirm(`¿Está seguro que desea ANULAR esta factura?\n\nMotivo: ${motivoCompleto}\n\nEsta acción NO se puede deshacer.`)) {
+        return;
+    }
+
+    try {
+        const facturaData = {
+            estado: 'ANULADA',
+            observaciones: `ANULADA - Motivo: ${motivoCompleto}`
+        };
+
+        const response = await FacturaService.update(id, facturaData);
+
+        if (response.success) {
+            modalAnularFactura.hide();
+            await cargarFacturas();
+            alert('Factura anulada exitosamente');
+        } else {
+            throw new Error(response.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al anular la factura: ' + error.message);
+    }
+}
+
+// Formatear motivo de anulación
+function formatMotivoAnulacion(motivo) {
+    const motivos = {
+        'ERROR_FACTURACION': 'Error en la facturación',
+        'CANCELACION_CLIENTE': 'Cancelación por parte del cliente',
+        'DUPLICADO': 'Factura duplicada',
+        'DEVOLUCION': 'Devolución de productos/servicios'
+    };
+    return motivos[motivo] || motivo;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     cargarFacturas();
     cargarFiltroClientes();
     cargarServiciosFactura();
     cargarRepuestosFactura();
 
-    // Inicializar modal de detalles
-    const modalElement = document.getElementById('modalDetallesFactura');
-    if (modalElement) {
-        modalDetallesFactura = new bootstrap.Modal(modalElement);
+    // Inicializar modales
+    const modalDetallesElement = document.getElementById('modalDetallesFactura');
+    if (modalDetallesElement) {
+        modalDetallesFactura = new bootstrap.Modal(modalDetallesElement);
+    }
+
+    const modalEditarElement = document.getElementById('modalEditarFactura');
+    if (modalEditarElement) {
+        modalEditarFactura = new bootstrap.Modal(modalEditarElement);
+    }
+
+    const modalAnularElement = document.getElementById('modalAnularFactura');
+    if (modalAnularElement) {
+        modalAnularFactura = new bootstrap.Modal(modalAnularElement);
+    }
+
+    // Event listener para botón editar en modal de detalles
+    const btnEditarFactura = document.getElementById('btnEditarFactura');
+    if (btnEditarFactura) {
+        btnEditarFactura.addEventListener('click', abrirModalEditar);
+    }
+
+    // Event listener para mostrar/ocultar detalle de motivo
+    const selectMotivo = document.getElementById('anularMotivo');
+    if (selectMotivo) {
+        selectMotivo.addEventListener('change', function() {
+            const detalleDiv = document.getElementById('anularDetalleMotivo');
+            if (this.value === 'OTRO') {
+                detalleDiv.style.display = 'block';
+            } else {
+                detalleDiv.style.display = 'none';
+            }
+        });
     }
 });
