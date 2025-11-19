@@ -20,6 +20,18 @@ function logout() {
     }
 }
 
+// ========================================
+// GRÁFICOS CON CHART.JS
+// ========================================
+
+// Variables globales para los gráficos
+let chartFacturacionMensual;
+let chartEstadosPedidos;
+let chartStockBajo;
+let chartPrecioMargen;
+let chartTopServicios;
+let chartServiciosVsRepuestos;
+
 // Establecer fechas por defecto (último mes)
 const hoy = new Date();
 const hace30Dias = new Date();
@@ -52,12 +64,24 @@ async function cargarReportes() {
         renderFacturasPorEstado(facturas);
         renderTopClientes(pedidos, clientes);
 
+        // Gráficos TAB 1
+        renderChartFacturacionMensual(facturas);
+        renderChartEstadosPedidos(pedidos);
+
         // TAB 2: Stock y Márgenes
         await cargarReportesStock();
         renderAnalisisMargenes(repuestos);
 
+        // Gráficos TAB 2
+        renderChartStockBajo(repuestos);
+        renderChartPrecioMargen(repuestos);
+
         // TAB 3: Ventas
-        renderReportesVentas(facturas);
+        const datosVentas = renderReportesVentas(facturas);
+
+        // Gráficos TAB 3
+        renderChartTopServicios(datosVentas.topServicios);
+        renderChartServiciosVsRepuestos(datosVentas.totalServicios, datosVentas.totalRepuestos);
 
     } catch (error) {
         console.error('Error cargando reportes:', error);
@@ -473,6 +497,14 @@ function renderReportesVentas(facturas) {
     document.getElementById('totalServiciosFacturados').textContent = formatMoney(totalServicios);
     document.getElementById('totalRepuestosFacturados').textContent = formatMoney(totalRepuestos);
     document.getElementById('totalGeneralFacturado').textContent = formatMoney(totalServicios + totalRepuestos);
+
+    // Retornar datos para gráficos
+    return {
+        topServicios: topServicios,
+        topRepuestos: topRepuestos,
+        totalServicios: totalServicios,
+        totalRepuestos: totalRepuestos
+    };
 }
 
 function renderTopServicios(servicios) {
@@ -530,6 +562,310 @@ function renderCategoriaServicios(categorias) {
             <td class="text-end"><strong>${formatMoney(c.total)}</strong></td>
         </tr>
     `).join('');
+}
+
+// ========================================
+// RENDERIZADO DE GRÁFICOS
+// ========================================
+
+// TAB 1: Gráfico de Facturación Mensual
+function renderChartFacturacionMensual(facturas) {
+    const ctx = document.getElementById('chartFacturacionMensual');
+    if (!ctx) return;
+
+    // Agrupar facturas por mes (últimos 6 meses)
+    const mesesLabels = [];
+    const mesesData = [];
+
+    for (let i = 5; i >= 0; i--) {
+        const fecha = new Date();
+        fecha.setMonth(fecha.getMonth() - i);
+        const mesLabel = fecha.toLocaleDateString('es-PY', { month: 'short', year: 'numeric' });
+        const mes = fecha.getMonth();
+        const anio = fecha.getFullYear();
+
+        const totalMes = facturas
+            .filter(f => {
+                const fechaFactura = new Date(f.fechaEmision);
+                return fechaFactura.getMonth() === mes &&
+                       fechaFactura.getFullYear() === anio &&
+                       f.estado === 'PAGADA';
+            })
+            .reduce((sum, f) => sum + (f.total || 0), 0);
+
+        mesesLabels.push(mesLabel);
+        mesesData.push(totalMes);
+    }
+
+    if (chartFacturacionMensual) chartFacturacionMensual.destroy();
+
+    chartFacturacionMensual = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: mesesLabels,
+            datasets: [{
+                label: 'Facturación (Gs.)',
+                data: mesesData,
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => formatMoney(context.parsed.y)
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => 'Gs. ' + (value / 1000).toFixed(0) + 'k'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// TAB 1: Gráfico de Estados de Pedidos
+function renderChartEstadosPedidos(pedidos) {
+    const ctx = document.getElementById('chartEstadosPedidos');
+    if (!ctx) return;
+
+    const estados = {};
+    pedidos.forEach(p => {
+        estados[p.estado] = (estados[p.estado] || 0) + 1;
+    });
+
+    const labels = Object.keys(estados).map(e => formatEstadoPedido(e));
+    const data = Object.values(estados);
+    const colores = Object.keys(estados).map(e => {
+        const colorMap = {
+            'NUEVO': '#0d6efd',
+            'EN_PROCESO': '#ffc107',
+            'COMPLETADO': '#198754',
+            'CANCELADO': '#dc3545'
+        };
+        return colorMap[e] || '#6c757d';
+    });
+
+    if (chartEstadosPedidos) chartEstadosPedidos.destroy();
+
+    chartEstadosPedidos = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colores,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+}
+
+// TAB 2: Gráfico de Stock Bajo
+function renderChartStockBajo(repuestos) {
+    const ctx = document.getElementById('chartStockBajo');
+    if (!ctx) return;
+
+    const repuestosConStockBajo = repuestos
+        .filter(r => r.stockActual <= r.puntoReorden && r.activo)
+        .sort((a, b) => a.stockActual - b.stockActual)
+        .slice(0, 10);
+
+    const labels = repuestosConStockBajo.map(r => r.nombre.substring(0, 20));
+    const dataStock = repuestosConStockBajo.map(r => r.stockActual);
+    const dataMinimo = repuestosConStockBajo.map(r => r.stockMinimo || 0);
+
+    if (chartStockBajo) chartStockBajo.destroy();
+
+    chartStockBajo = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Stock Actual',
+                    data: dataStock,
+                    backgroundColor: '#ffc107',
+                    borderColor: '#ff9800',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Stock Mínimo',
+                    data: dataMinimo,
+                    backgroundColor: '#dc3545',
+                    borderColor: '#c82333',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' }
+            },
+            scales: {
+                x: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+// TAB 2: Gráfico de Precio vs Margen
+function renderChartPrecioMargen(repuestos) {
+    const ctx = document.getElementById('chartPrecioMargen');
+    if (!ctx) return;
+
+    const repuestosConMargen = repuestos
+        .filter(r => r.activo && r.precioCosto > 0 && r.precioVenta > 0)
+        .map(r => ({
+            x: r.precioVenta,
+            y: ((r.precioVenta - r.precioCosto) / r.precioCosto * 100),
+            label: r.nombre
+        }));
+
+    if (chartPrecioMargen) chartPrecioMargen.destroy();
+
+    chartPrecioMargen = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Repuestos',
+                data: repuestosConMargen,
+                backgroundColor: 'rgba(25, 135, 84, 0.6)',
+                borderColor: '#198754',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.raw.label}: ${formatMoney(context.raw.x)}, Margen: ${context.raw.y.toFixed(1)}%`
+                    }
+                },
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: 'Precio de Venta (Gs.)' },
+                    ticks: {
+                        callback: (value) => formatMoney(value)
+                    }
+                },
+                y: {
+                    title: { display: true, text: 'Margen (%)' },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// TAB 3: Gráfico de Top Servicios
+function renderChartTopServicios(topServicios) {
+    const ctx = document.getElementById('chartTopServicios');
+    if (!ctx) return;
+
+    const labels = topServicios.map(s => s.nombre.substring(0, 25));
+    const data = topServicios.map(s => s.total);
+
+    if (chartTopServicios) chartTopServicios.destroy();
+
+    chartTopServicios = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total Facturado (Gs.)',
+                data: data,
+                backgroundColor: '#0d6efd',
+                borderColor: '#0a58ca',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => formatMoney(context.parsed.y)
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => 'Gs. ' + (value / 1000).toFixed(0) + 'k'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// TAB 3: Gráfico de Servicios vs Repuestos
+function renderChartServiciosVsRepuestos(totalServicios, totalRepuestos) {
+    const ctx = document.getElementById('chartServiciosVsRepuestos');
+    if (!ctx) return;
+
+    if (chartServiciosVsRepuestos) chartServiciosVsRepuestos.destroy();
+
+    chartServiciosVsRepuestos = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Servicios', 'Repuestos'],
+            datasets: [{
+                data: [totalServicios, totalRepuestos],
+                backgroundColor: ['#0d6efd', '#17a2b8'],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const label = context.label || '';
+                            const value = formatMoney(context.parsed);
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percent = ((context.parsed / total) * 100).toFixed(1);
+                            return `${label}: ${value} (${percent}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
 
 // ========================================

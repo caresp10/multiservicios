@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../css/styles.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <!-- html2pdf.js for PDF export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -96,6 +98,22 @@
                 <div class="tab-content" id="reportesTabContent">
                     <!-- TAB 1: Resumen General -->
                     <div class="tab-pane fade show active" id="resumen-panel" role="tabpanel">
+
+                <!-- Gráficos de Resumen -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <div class="table-card">
+                            <h6 class="mb-3"><i class="fas fa-chart-line text-primary"></i> Evolución de Facturación (Últimos 6 Meses)</h6>
+                            <canvas id="chartFacturacionMensual" height="100"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="table-card">
+                            <h6 class="mb-3"><i class="fas fa-chart-pie text-success"></i> Distribución de Estados de Pedidos</h6>
+                            <canvas id="chartEstadosPedidos" height="100"></canvas>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Resumen General -->
                 <div class="row g-4 mb-4">
@@ -226,6 +244,23 @@
 
                     <!-- TAB 2: Stock y Márgenes -->
                     <div class="tab-pane fade" id="stock-panel" role="tabpanel">
+
+                        <!-- Gráficos de Stock -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6">
+                                <div class="table-card">
+                                    <h6 class="mb-3"><i class="fas fa-chart-bar text-warning"></i> Top 10 Repuestos con Stock Bajo</h6>
+                                    <canvas id="chartStockBajo" height="100"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="table-card">
+                                    <h6 class="mb-3"><i class="fas fa-chart-scatter text-success"></i> Análisis Precio vs Margen</h6>
+                                    <canvas id="chartPrecioMargen" height="100"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="row g-4 mb-4">
                             <!-- Stock Bajo -->
                             <div class="col-md-12">
@@ -305,6 +340,23 @@
 
                     <!-- TAB 3: Ventas -->
                     <div class="tab-pane fade" id="ventas-panel" role="tabpanel">
+
+                        <!-- Gráficos de Ventas -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-8">
+                                <div class="table-card">
+                                    <h6 class="mb-3"><i class="fas fa-chart-bar text-primary"></i> Top 10 Servicios Más Vendidos</h6>
+                                    <canvas id="chartTopServicios" height="80"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="table-card">
+                                    <h6 class="mb-3"><i class="fas fa-chart-doughnut text-info"></i> Ingresos: Servicios vs Repuestos</h6>
+                                    <canvas id="chartServiciosVsRepuestos" height="80"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="row g-4 mb-4">
                             <!-- Servicios Más Vendidos -->
                             <div class="col-md-6">
