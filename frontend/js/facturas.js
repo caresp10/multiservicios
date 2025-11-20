@@ -1667,22 +1667,18 @@ async function confirmarAnularFactura() {
 
     const motivoCompleto = motivo === 'OTRO' ? detalleTexto : formatMotivoAnulacion(motivo);
 
-    if (!confirm(`¿Está seguro que desea ANULAR esta factura?\n\nMotivo: ${motivoCompleto}\n\nEsta acción NO se puede deshacer.`)) {
+    if (!confirm(`¿Está seguro que desea ANULAR esta factura?\n\nMotivo: ${motivoCompleto}\n\nEsta acción anulará la factura y devolverá el stock de los repuestos facturados.\n\nEsta acción NO se puede deshacer.`)) {
         return;
     }
 
     try {
-        const facturaData = {
-            estado: 'ANULADA',
-            observaciones: `ANULADA - Motivo: ${motivoCompleto}`
-        };
-
-        const response = await FacturaService.update(id, facturaData);
+        // Usar el nuevo endpoint de anulación que devuelve stock
+        const response = await FacturaService.anular(id);
 
         if (response.success) {
             modalAnularFactura.hide();
             await cargarFacturas();
-            alert('Factura anulada exitosamente');
+            alert('Factura anulada exitosamente. Se ha devuelto el stock de los repuestos.');
         } else {
             throw new Error(response.message);
         }

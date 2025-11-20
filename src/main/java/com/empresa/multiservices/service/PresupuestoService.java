@@ -11,8 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,16 +50,25 @@ public class PresupuestoService {
         }
 
         // Validar que el pedido esté en un estado válido para crear presupuesto
-        if (pedido.getEstado() == com.empresa.multiservices.model.enums.EstadoPedido.OT_GENERADA ||
-            pedido.getEstado() == com.empresa.multiservices.model.enums.EstadoPedido.OT_EN_PROCESO ||
-            pedido.getEstado() == com.empresa.multiservices.model.enums.EstadoPedido.OT_TERMINADA ||
-            pedido.getEstado() == com.empresa.multiservices.model.enums.EstadoPedido.FACTURADO ||
+        if (pedido.getEstado() == com.empresa.multiservices.model.enums.EstadoPedido.EN_PROCESO ||
+            pedido.getEstado() == com.empresa.multiservices.model.enums.EstadoPedido.COMPLETADO ||
             pedido.getEstado() == com.empresa.multiservices.model.enums.EstadoPedido.CANCELADO) {
             throw new RuntimeException("No se puede crear un presupuesto para un pedido en estado: " + pedido.getEstado());
         }
 
         // Generar número de presupuesto
         String numeroPresupuesto = generarNumeroPresupuesto();
+
+        // Calcular validezDias automáticamente desde fechaVencimiento
+        Integer validezDias = 15; // valor por defecto
+        if (request.getFechaVencimiento() != null) {
+            LocalDate hoy = LocalDate.now();
+            LocalDate fechaVenc = request.getFechaVencimiento();
+            long diasDiferencia = ChronoUnit.DAYS.between(hoy, fechaVenc);
+            validezDias = (int) Math.max(diasDiferencia, 0);
+        } else if (request.getValidezDias() != null) {
+            validezDias = request.getValidezDias();
+        }
 
         // Crear el presupuesto
         Presupuesto presupuesto = Presupuesto.builder()
@@ -70,7 +81,7 @@ public class PresupuestoService {
                 .estado(EstadoPresupuesto.valueOf(request.getEstado()))
                 .observaciones(request.getObservaciones())
                 .condicionesPago(request.getCondicionesPago())
-                .validezDias(request.getValidezDias() != null ? request.getValidezDias() : 15)
+                .validezDias(validezDias)
                 .items(new ArrayList<>())
                 .build();
 
@@ -112,9 +123,7 @@ public class PresupuestoService {
 
         // Actualizar el pedido para indicar que tiene presupuesto
         pedido.setTienePresupuesto(true);
-        // Cambiar el estado del pedido a PRESUPUESTO_GENERADO cuando se crea el presupuesto
-        pedido.setEstado(com.empresa.multiservices.model.enums.EstadoPedido.PRESUPUESTO_GENERADO);
-        System.out.println("✅ Presupuesto creado - Pedido actualizado a PRESUPUESTO_GENERADO");
+        // El pedido mantiene su estado NUEVO hasta que el presupuesto sea aceptado
         pedidoRepository.save(pedido);
 
         return presupuestoRepository.save(presupuesto);
@@ -179,24 +188,24 @@ public class PresupuestoService {
 
             switch (nuevoEstado) {
                 case ACEPTADO:
-                    // El pedido pasa a PRESUPUESTO_ACEPTADO cuando el presupuesto es aceptado
-                    pedido.setEstado(com.empresa.multiservices.model.enums.EstadoPedido.PRESUPUESTO_ACEPTADO);
+                    // El pedido pasa a EN_PROCESO cuando el presupuesto es aceptado
+                    pedido.setEstado(com.empresa.multiservices.model.enums.EstadoPedido.EN_PROCESO);
                     pedidoRepository.save(pedido);
-                    System.out.println("✅ Pedido actualizado a PRESUPUESTO_ACEPTADO");
+                    System.out.println("✅ Pedido actualizado a EN_PROCESO");
                     break;
 
                 case RECHAZADO:
-                    // El pedido pasa a PRESUPUESTO_RECHAZADO cuando el presupuesto es rechazado
-                    pedido.setEstado(com.empresa.multiservices.model.enums.EstadoPedido.PRESUPUESTO_RECHAZADO);
+                    // El pedido pasa a CANCELADO cuando el presupuesto es rechazado
+                    pedido.setEstado(com.empresa.multiservices.model.enums.EstadoPedido.CANCELADO);
                     pedidoRepository.save(pedido);
-                    System.out.println("✅ Pedido actualizado a PRESUPUESTO_RECHAZADO");
+                    System.out.println("✅ Pedido actualizado a CANCELADO");
                     break;
 
                 case PENDIENTE:
-                    // Si vuelve a PENDIENTE, el pedido vuelve a PRESUPUESTO_GENERADO
-                    pedido.setEstado(com.empresa.multiservices.model.enums.EstadoPedido.PRESUPUESTO_GENERADO);
+                    // Si vuelve a PENDIENTE, el pedido vuelve a NUEVO
+                    pedido.setEstado(com.empresa.multiservices.model.enums.EstadoPedido.NUEVO);
                     pedidoRepository.save(pedido);
-                    System.out.println("✅ Pedido actualizado a PRESUPUESTO_GENERADO");
+                    System.out.println("✅ Pedido actualizado a NUEVO");
                     break;
 
                 case VENCIDO:

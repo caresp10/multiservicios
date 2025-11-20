@@ -83,15 +83,23 @@ public class FacturaController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
     public ResponseEntity<ApiResponse> eliminar(@PathVariable Long id) {
+        // Las facturas no se pueden eliminar por regla de negocio
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Las facturas no se pueden eliminar. Use la opción de anular factura."));
+    }
+
+    @PatchMapping("/{id}/anular")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
+    public ResponseEntity<ApiResponse> anular(@PathVariable Long id) {
         try {
-            facturaService.eliminar(id);
-            return ResponseEntity.ok(ApiResponse.success("Factura eliminada exitosamente", null));
+            Factura factura = facturaService.anular(id);
+            return ResponseEntity.ok(ApiResponse.success("Factura anulada exitosamente. Se ha devuelto el stock de repuestos.", factura));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al eliminar factura: " + e.getMessage()));
+                    .body(ApiResponse.error("Error al anular factura: " + e.getMessage()));
         }
     }
 

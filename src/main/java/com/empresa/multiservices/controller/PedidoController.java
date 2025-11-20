@@ -69,4 +69,16 @@ public class PedidoController {
         List<Pedido> pedidos = pedidoService.listarPorCliente(idCliente);
         return ResponseEntity.ok(ApiResponse.success("Pedidos del cliente", pedidos));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
+    public ResponseEntity<ApiResponse> eliminar(@PathVariable Long id) {
+        try {
+            pedidoService.eliminar(id);
+            return ResponseEntity.ok(ApiResponse.success("Pedido eliminado exitosamente", null));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
 }

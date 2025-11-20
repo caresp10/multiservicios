@@ -54,8 +54,9 @@ public class PresupuestoController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
     public ResponseEntity<ApiResponse> eliminar(@PathVariable Long id) {
-        presupuestoService.eliminar(id);
-        return ResponseEntity.ok(ApiResponse.success("Presupuesto eliminado exitosamente", null));
+        // Los presupuestos no se pueden eliminar por regla de negocio
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Los presupuestos no se pueden eliminar. Use el cambio de estado para rechazar o marcar como vencido."));
     }
 
     @GetMapping("/pedido/{idPedido}/aceptados")

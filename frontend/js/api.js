@@ -208,6 +208,10 @@ class FacturaService {
     static getDatosParaFacturar(idOt) {
         return ApiService.get(`/facturas/datos-facturacion/ot/${idOt}`);
     }
+
+    static anular(id) {
+        return ApiService.patch(`/facturas/${id}/anular`, {});
+    }
 }
 
 class PresupuestoService {

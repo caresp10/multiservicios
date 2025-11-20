@@ -58,7 +58,7 @@ public class Presupuesto {
     private BigDecimal total = BigDecimal.ZERO;
     
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     @Builder.Default
     private EstadoPresupuesto estado = EstadoPresupuesto.PENDIENTE;
     

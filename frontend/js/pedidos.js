@@ -100,11 +100,15 @@ function renderPedidos(data) {
 document.getElementById('searchInput').addEventListener('input', aplicarFiltros);
 document.getElementById('filterEstado').addEventListener('change', aplicarFiltros);
 document.getElementById('filterPrioridad').addEventListener('change', aplicarFiltros);
+document.getElementById('filterFechaDesde').addEventListener('change', aplicarFiltros);
+document.getElementById('filterFechaHasta').addEventListener('change', aplicarFiltros);
 
 function aplicarFiltros() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const estado = document.getElementById('filterEstado').value;
     const prioridad = document.getElementById('filterPrioridad').value;
+    const fechaDesde = document.getElementById('filterFechaDesde').value;
+    const fechaHasta = document.getElementById('filterFechaHasta').value;
 
     let filtered = pedidos.filter(pedido => {
         const matchSearch = pedido.numeroPedido.toLowerCase().includes(searchTerm) ||
@@ -112,7 +116,19 @@ function aplicarFiltros() {
         const matchEstado = !estado || pedido.estado === estado;
         const matchPrioridad = !prioridad || pedido.prioridad === prioridad;
 
-        return matchSearch && matchEstado && matchPrioridad;
+        // Filtro por fecha
+        let matchFecha = true;
+        if (pedido.fechaPedido) {
+            const fechaPedido = new Date(pedido.fechaPedido).toISOString().split('T')[0];
+            if (fechaDesde && fechaPedido < fechaDesde) {
+                matchFecha = false;
+            }
+            if (fechaHasta && fechaPedido > fechaHasta) {
+                matchFecha = false;
+            }
+        }
+
+        return matchSearch && matchEstado && matchPrioridad && matchFecha;
     });
 
     renderPedidos(filtered);
@@ -282,7 +298,7 @@ function formatEstado(estado) {
 function getEstadoClass(estado) {
     const classes = {
         'NUEVO': 'primary',         // Azul para nuevos pedidos
-        'EN_PROCESO': 'warning',    // Amarillo/Naranja para en proceso
+        'EN_PROCESO': 'warning',    // Amarillo para en proceso
         'COMPLETADO': 'success',    // Verde para completados
         'CANCELADO': 'danger'       // Rojo para cancelados
     };

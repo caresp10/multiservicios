@@ -170,10 +170,10 @@ public class FacturaService {
         // ===================================================================
         procesarDescuentoStockYMovimientos(saved);
 
-        // Actualizar estado del pedido a FACTURADO
+        // Actualizar estado del pedido a COMPLETADO
         if (saved.getPedido() != null) {
             Pedido pedido = saved.getPedido();
-            pedido.setEstado(EstadoPedido.FACTURADO);
+            pedido.setEstado(EstadoPedido.COMPLETADO);
             pedidoRepository.save(pedido);
         }
 
@@ -218,8 +218,89 @@ public class FacturaService {
 
     @Transactional
     public void eliminar(Long id) {
+        // Las facturas no se pueden eliminar por regla de negocio
+        throw new RuntimeException("Las facturas no se pueden eliminar. Use la opción de anular factura.");
+    }
+
+    @Transactional
+    public Factura anular(Long id) {
         Factura factura = obtenerPorId(id);
-        facturaRepository.delete(factura);
+
+        // Validar que la factura no esté ya anulada
+        if (factura.getEstado() == EstadoFactura.ANULADA) {
+            throw new RuntimeException("La factura ya está anulada");
+        }
+
+        System.out.println("===================================================");
+        System.out.println("ANULANDO FACTURA: " + factura.getNumeroFactura());
+
+        // Devolver stock de repuestos
+        procesarDevolucionStock(factura);
+
+        // Cambiar estado a ANULADA
+        factura.setEstado(EstadoFactura.ANULADA);
+
+        return facturaRepository.save(factura);
+    }
+
+    /**
+     * Procesa la devolución de stock al anular una factura
+     * Incrementa el stock de los repuestos que fueron descontados y registra movimientos
+     */
+    private void procesarDevolucionStock(Factura factura) {
+        if (factura.getItems() == null || factura.getItems().isEmpty()) {
+            return;
+        }
+
+        System.out.println("PROCESANDO DEVOLUCIÓN DE STOCK");
+        System.out.println("Factura: " + factura.getNumeroFactura());
+
+        // Obtener usuario actual (para registro de movimiento)
+        Usuario usuario = obtenerUsuarioActual();
+
+        for (FacturaItem item : factura.getItems()) {
+            // Solo procesar items de tipo REPUESTO que tengan referencia al repuesto
+            if (item.getTipoItem() == TipoItemFactura.REPUESTO && item.getRepuesto() != null) {
+                Repuesto repuesto = item.getRepuesto();
+                int cantidadADevolver = item.getCantidad().intValue();
+
+                System.out.println("---------------------------------------------------");
+                System.out.println("Repuesto: " + repuesto.getNombre() + " (" + repuesto.getCodigo() + ")");
+                System.out.println("Stock actual: " + repuesto.getStockActual());
+                System.out.println("Cantidad a devolver: " + cantidadADevolver);
+
+                // Guardar stock anterior
+                int stockAnterior = repuesto.getStockActual();
+
+                // DEVOLVER STOCK
+                repuesto.setStockActual(stockAnterior + cantidadADevolver);
+                repuestoRepository.save(repuesto);
+
+                System.out.println("✅ Stock devuelto. Nuevo stock: " + repuesto.getStockActual());
+
+                // REGISTRAR MOVIMIENTO DE STOCK (ENTRADA por anulación)
+                MovimientoStock movimiento = MovimientoStock.builder()
+                        .repuesto(repuesto)
+                        .tipoMovimiento(MovimientoStock.TipoMovimiento.ENTRADA)
+                        .cantidad(cantidadADevolver)
+                        .motivo(MovimientoStock.MotivoMovimiento.DEVOLUCION)
+                        .referencia("ANULACIÓN FACTURA: " + factura.getNumeroFactura())
+                        .stockAnterior(stockAnterior)
+                        .stockNuevo(repuesto.getStockActual())
+                        .usuario(usuario)
+                        .factura(factura)
+                        .fechaMovimiento(LocalDateTime.now())
+                        .observaciones("Devolución automática por anulación de factura")
+                        .build();
+
+                movimientoStockRepository.save(movimiento);
+
+                System.out.println("✅ Movimiento de devolución registrado (ID: " + movimiento.getIdMovimiento() + ")");
+            }
+        }
+
+        System.out.println("===================================================");
+        System.out.println("DEVOLUCIÓN DE STOCK COMPLETADA");
     }
 
     @Transactional(readOnly = true)

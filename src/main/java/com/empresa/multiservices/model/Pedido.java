@@ -58,6 +58,7 @@ public class Pedido {
     private Prioridad prioridad = Prioridad.MEDIA;
     
     @Enumerated(EnumType.STRING)
+    @Column(length = 20)
     @Builder.Default
     private EstadoPedido estado = EstadoPedido.NUEVO;
         

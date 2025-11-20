@@ -75,9 +75,9 @@ public class OrdenTrabajoService {
         
         ot = otRepository.save(ot);
         
-        // Actualizar estado del pedido
+        // Actualizar estado del pedido (se mantiene EN_PROCESO durante todo el ciclo de OT)
         pedido.setTieneOt(true);
-        pedido.setEstado(EstadoPedido.OT_GENERADA);
+        // El pedido ya está en EN_PROCESO (se cambió cuando el presupuesto fue aceptado)
         pedidoRepository.save(pedido);
         
         return ot;
@@ -103,12 +103,9 @@ public class OrdenTrabajoService {
         
         ot.setEstado(EstadoOT.EN_PROCESO);
         ot.setFechaInicio(LocalDateTime.now());
-        
-        // Actualizar estado del pedido
-        Pedido pedido = ot.getPedido();
-        pedido.setEstado(EstadoPedido.OT_EN_PROCESO);
-        pedidoRepository.save(pedido);
-        
+
+        // El pedido se mantiene en EN_PROCESO durante todo el ciclo de OT
+
         return otRepository.save(ot);
     }
     
@@ -128,12 +125,9 @@ public class OrdenTrabajoService {
         ot.setHorasTrabajadas(horasTrabajadas);
         ot.setEstado(EstadoOT.TERMINADA);
         ot.setFechaFinalizacion(LocalDateTime.now());
-        
-        // Actualizar estado del pedido
-        Pedido pedido = ot.getPedido();
-        pedido.setEstado(EstadoPedido.OT_TERMINADA);
-        pedidoRepository.save(pedido);
-        
+
+        // El pedido se mantiene en EN_PROCESO hasta que se facture
+
         return otRepository.save(ot);
     }
     
@@ -225,12 +219,8 @@ public class OrdenTrabajoService {
 
         // Actualizar el pedido
         Pedido pedido = ot.getPedido();
-        // Revertir el estado del pedido si es necesario
-        if (pedido.getEstado() == EstadoPedido.OT_GENERADA ||
-            pedido.getEstado() == EstadoPedido.OT_EN_PROCESO) {
-            pedido.setEstado(EstadoPedido.PRESUPUESTO_ACEPTADO);
-            pedidoRepository.save(pedido);
-        }
+        pedido.setTieneOt(false);
+        pedidoRepository.save(pedido);
 
         otRepository.delete(ot);
     }

@@ -111,6 +111,23 @@ public class PedidoService {
         return pedidoRepository.findByClienteIdCliente(idCliente);
     }
     
+    public void eliminar(Long id) {
+        Pedido pedido = pedidoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Pedido no encontrado"));
+
+        // Validar que el pedido no tenga presupuesto
+        if (pedido.getTienePresupuesto() != null && pedido.getTienePresupuesto()) {
+            throw new RuntimeException("No se puede eliminar un pedido que tiene presupuesto asociado");
+        }
+
+        // Validar que el pedido no tenga OT
+        if (pedido.getTieneOt() != null && pedido.getTieneOt()) {
+            throw new RuntimeException("No se puede eliminar un pedido que tiene Orden de Trabajo asociada");
+        }
+
+        pedidoRepository.delete(pedido);
+    }
+
     private String generarNumeroPedido() {
         String fecha = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         long count = pedidoRepository.count() + 1;
