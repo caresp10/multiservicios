@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Repuestos - Sistema Multiservicios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .stock-bajo {
+            background-color: #fff3cd;
+        }
+        .stock-critico {
+            background-color: #f8d7da;
+        }
+        .stock-ok {
+            background-color: #d1e7dd;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- El sidebar se carga dinámicamente desde components/sidebar.html -->
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <nav class="top-navbar">
+                <div>
+                    <button class="btn btn-link d-md-none" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+                    <h5 class="d-inline ms-2">Gestión de Repuestos</h5>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar"></div>
+                    <div>
+                        <strong id="userName"></strong><br>
+                        <small class="text-muted" id="userRole"></small>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="content-area">
+                <div class="page-header">
+                    <h1><i class="fas fa-cogs"></i> Gestión de Repuestos</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="dashboard.html">Dashboard</a></li>
+                            <li class="breadcrumb-item">Inventario</li>
+                            <li class="breadcrumb-item active">Repuestos</li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <!-- Filtros y Alertas -->
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <input type="text" class="form-control" id="searchInput"
+                                               placeholder="Buscar por código o nombre...">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select class="form-select" id="filterCategoria">
+                                            <option value="">Todas las categorías</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select class="form-select" id="filterStock">
+                                            <option value="">Todos los stocks</option>
+                                            <option value="bajo">Stock Bajo</option>
+                                            <option value="sin">Sin Stock</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <select class="form-select" id="filterEstado">
+                                            <option value="">Todos</option>
+                                            <option value="true">Activos</option>
+                                            <option value="false">Inactivos</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <button class="btn btn-primary w-100 mb-2" onclick="openModalRepuesto()">
+                                    <i class="fas fa-plus"></i> Nuevo Repuesto
+                                </button>
+                                <button class="btn btn-warning w-100" onclick="verStockBajo()">
+                                    <i class="fas fa-exclamation-triangle"></i> Ver Stock Bajo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alertas de Stock Bajo -->
+                <div id="alertasStock" class="mb-3"></div>
+
+                <!-- Tabla de Repuestos -->
+                <div class="table-card fade-in">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nombre</th>
+                                    <th>Categoría</th>
+                                    <th>P. Costo</th>
+                                    <th>P. Venta</th>
+                                    <th>Margen %</th>
+                                    <th>Stock</th>
+                                    <th>Min/Max</th>
+                                    <th>Ubicación</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="repuestosTable">
+                                <tr>
+                                    <td colspan="11" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Repuesto -->
+    <div class="modal fade" id="modalRepuesto" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-cogs"></i> <span id="modalTitleText">Nuevo Repuesto</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formRepuesto">
+                        <input type="hidden" id="idRepuesto">
+
+                        <div class="row">
+                            <!-- Código -->
+                            <div class="col-md-3 mb-3">
+                                <label for="codigo" class="form-label">
+                                    Código <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="codigo"
+                                       placeholder="Ej: REP-ELEC-001" required>
+                            </div>
+
+                            <!-- Nombre -->
+                            <div class="col-md-6 mb-3">
+                                <label for="nombre" class="form-label">
+                                    Nombre <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="nombre"
+                                       placeholder="Ej: Llave termomagnética 10A" required>
+                            </div>
+
+                            <!-- Categoría -->
+                            <div class="col-md-3 mb-3">
+                                <label for="idCategoria" class="form-label">
+                                    Categoría
+                                </label>
+                                <select class="form-select" id="idCategoria">
+                                    <option value="">Sin categoría</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Descripción -->
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label">Descripción</label>
+                            <textarea class="form-control" id="descripcion" rows="2"></textarea>
+                        </div>
+
+                        <div class="row">
+                            <!-- Marca -->
+                            <div class="col-md-3 mb-3">
+                                <label for="marca" class="form-label">Marca</label>
+                                <input type="text" class="form-control" id="marca">
+                            </div>
+
+                            <!-- Modelo -->
+                            <div class="col-md-3 mb-3">
+                                <label for="modelo" class="form-label">Modelo</label>
+                                <input type="text" class="form-control" id="modelo">
+                            </div>
+
+                            <!-- Unidad de Medida -->
+                            <div class="col-md-3 mb-3">
+                                <label for="unidadMedida" class="form-label">Unidad</label>
+                                <select class="form-select" id="unidadMedida">
+                                    <option value="UNIDAD">Unidad</option>
+                                    <option value="METRO">Metro</option>
+                                    <option value="KILO">Kilo</option>
+                                    <option value="LITRO">Litro</option>
+                                    <option value="CAJA">Caja</option>
+                                    <option value="ROLLO">Rollo</option>
+                                    <option value="PAR">Par</option>
+                                </select>
+                            </div>
+
+                            <!-- Ubicación -->
+                            <div class="col-md-3 mb-3">
+                                <label for="ubicacion" class="form-label">Ubicación</label>
+                                <input type="text" class="form-control" id="ubicacion"
+                                       placeholder="Ej: Estante A-3">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Precio Costo -->
+                            <div class="col-md-3 mb-3">
+                                <label for="precioCosto" class="form-label">
+                                    Precio Costo (Gs.) <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="precioCosto"
+                                       min="0" step="1000" required>
+                            </div>
+
+                            <!-- Precio Venta -->
+                            <div class="col-md-3 mb-3">
+                                <label for="precioVenta" class="form-label">
+                                    Precio Venta (Gs.) <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="precioVenta"
+                                       min="0" step="1000" required>
+                            </div>
+
+                            <!-- Margen (calculado) -->
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label">Margen %</label>
+                                <input type="text" class="form-control" id="margenCalculado"
+                                       readonly style="background-color: #e9ecef;">
+                            </div>
+
+                            <!-- Stock Actual -->
+                            <div class="col-md-2 mb-3">
+                                <label for="stockActual" class="form-label">Stock Actual</label>
+                                <input type="number" class="form-control" id="stockActual"
+                                       min="0" value="0">
+                            </div>
+
+                            <!-- Stock Mínimo -->
+                            <div class="col-md-2 mb-3">
+                                <label for="stockMinimo" class="form-label">Stock Mín.</label>
+                                <input type="number" class="form-control" id="stockMinimo"
+                                       min="0" value="10">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Stock Máximo -->
+                            <div class="col-md-2 mb-3">
+                                <label for="stockMaximo" class="form-label">Stock Máx.</label>
+                                <input type="number" class="form-control" id="stockMaximo"
+                                       min="0" value="100">
+                            </div>
+
+                            <!-- Punto Reorden -->
+                            <div class="col-md-2 mb-3">
+                                <label for="puntoReorden" class="form-label">Pto. Reorden</label>
+                                <input type="number" class="form-control" id="puntoReorden"
+                                       min="0">
+                            </div>
+
+                            <!-- Proveedor -->
+                            <div class="col-md-5 mb-3">
+                                <label for="proveedor" class="form-label">Proveedor</label>
+                                <input type="text" class="form-control" id="proveedor">
+                            </div>
+
+                            <!-- Teléfono Proveedor -->
+                            <div class="col-md-3 mb-3">
+                                <label for="telefonoProveedor" class="form-label">Tel. Proveedor</label>
+                                <input type="text" class="form-control" id="telefonoProveedor"
+                                       placeholder="0xxx-xxx-xxx">
+                            </div>
+                        </div>
+
+                        <!-- Estado (solo visible en edición) -->
+                        <div class="mb-3" id="estadoContainer" style="display: none;">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="activo" checked>
+                                <label class="form-check-label" for="activo">
+                                    <strong>Repuesto Activo</strong>
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="guardarRepuesto()">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script src="../js/gestion-repuestos.js"></script>
+</body>
+</html>

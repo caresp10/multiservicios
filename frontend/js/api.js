@@ -208,6 +208,10 @@ class FacturaService {
     static getDatosParaFacturar(idOt) {
         return ApiService.get(`/facturas/datos-facturacion/ot/${idOt}`);
     }
+
+    static anular(id) {
+        return ApiService.patch(`/facturas/${id}/anular`, {});
+    }
 }
 
 class PresupuestoService {
@@ -267,5 +271,131 @@ class TecnicoService {
 
     static delete(id) {
         return ApiService.delete(`/tecnicos/${id}`);
+    }
+}
+
+class ServicioCatalogoService {
+    static getAll() {
+        return ApiService.get('/servicios-catalogo');
+    }
+
+    static getActivos() {
+        return ApiService.get('/servicios-catalogo/activos');
+    }
+
+    static getById(id) {
+        return ApiService.get(`/servicios-catalogo/${id}`);
+    }
+
+    static getByCategoria(idCategoria) {
+        return ApiService.get(`/servicios-catalogo/categoria/${idCategoria}`);
+    }
+
+    static create(servicio) {
+        return ApiService.post('/servicios-catalogo', servicio);
+    }
+
+    static update(id, servicio) {
+        return ApiService.put(`/servicios-catalogo/${id}`, servicio);
+    }
+
+    static delete(id) {
+        return ApiService.delete(`/servicios-catalogo/${id}`);
+    }
+
+    static getHistorico(id) {
+        return ApiService.get(`/servicios-catalogo/${id}/historico-precios`);
+    }
+}
+
+class RepuestoService {
+    static getAll() {
+        return ApiService.get('/repuestos');
+    }
+
+    static getActivos() {
+        return ApiService.get('/repuestos/activos');
+    }
+
+    static getById(id) {
+        return ApiService.get(`/repuestos/${id}`);
+    }
+
+    static getStockBajo() {
+        return ApiService.get('/repuestos/stock-bajo');
+    }
+
+    static getByCategoria(idCategoria) {
+        return ApiService.get(`/repuestos/categoria/${idCategoria}`);
+    }
+
+    static create(repuesto) {
+        return ApiService.post('/repuestos', repuesto);
+    }
+
+    static update(id, repuesto) {
+        return ApiService.put(`/repuestos/${id}`, repuesto);
+    }
+
+    static delete(id) {
+        return ApiService.delete(`/repuestos/${id}`);
+    }
+
+    static ajustarStock(id, ajusteData) {
+        return ApiService.put(`/repuestos/${id}/ajustar-stock`, ajusteData);
+    }
+
+    static getHistorico(id) {
+        return ApiService.get(`/repuestos/${id}/historico-precios`);
+    }
+
+    static getMovimientos(id) {
+        return ApiService.get(`/repuestos/${id}/movimientos-stock`);
+    }
+}
+
+class TimbradoService {
+    static getAll() {
+        return ApiService.get('/timbrados');
+    }
+
+    static getActivos() {
+        return ApiService.get('/timbrados/activos');
+    }
+
+    static getVigentes() {
+        return ApiService.get('/timbrados/vigentes');
+    }
+
+    static getProximosAVencer(dias = 30) {
+        return ApiService.get(`/timbrados/proximos-vencer?dias=${dias}`);
+    }
+
+    static getVencidos() {
+        return ApiService.get('/timbrados/vencidos');
+    }
+
+    static getParaFacturar() {
+        return ApiService.get('/timbrados/para-facturar');
+    }
+
+    static getById(id) {
+        return ApiService.get(`/timbrados/${id}`);
+    }
+
+    static create(timbrado) {
+        return ApiService.post('/timbrados', timbrado);
+    }
+
+    static update(id, timbrado) {
+        return ApiService.put(`/timbrados/${id}`, timbrado);
+    }
+
+    static delete(id) {
+        return ApiService.delete(`/timbrados/${id}`);
+    }
+
+    static activar(id) {
+        return ApiService.put(`/timbrados/${id}/activar`, {});
     }
 }

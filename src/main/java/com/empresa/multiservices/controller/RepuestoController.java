@@ -71,10 +71,10 @@ public class RepuestoController {
         return ResponseEntity.ok(ApiResponse.success("Resultados de búsqueda", repuestos));
     }
 
-    @GetMapping("/categoria/{categoria}")
+    @GetMapping("/categoria/{idCategoria}")
     @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO')")
-    public ResponseEntity<ApiResponse> listarPorCategoria(@PathVariable String categoria) {
-        List<Repuesto> repuestos = repuestoService.listarPorCategoria(categoria);
+    public ResponseEntity<ApiResponse> listarPorCategoria(@PathVariable Long idCategoria) {
+        List<Repuesto> repuestos = repuestoService.listarPorCategoria(idCategoria);
         return ResponseEntity.ok(ApiResponse.success("Repuestos de la categoría", repuestos));
     }
 
@@ -136,5 +136,29 @@ public class RepuestoController {
     public ResponseEntity<ApiResponse> activar(@PathVariable Long id) {
         repuestoService.activar(id);
         return ResponseEntity.ok(ApiResponse.success("Repuesto activado exitosamente", null));
+    }
+
+    @GetMapping("/generar-codigo")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
+    public ResponseEntity<ApiResponse> generarCodigo() {
+        try {
+            String codigoSugerido = repuestoService.generarCodigoAutomatico();
+            return ResponseEntity.ok(ApiResponse.success("Código generado", codigoSugerido));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al generar código: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/generar-codigo/{idCategoria}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
+    public ResponseEntity<ApiResponse> generarCodigoPorCategoria(@PathVariable Long idCategoria) {
+        try {
+            String codigoSugerido = repuestoService.generarCodigoPorCategoria(idCategoria);
+            return ResponseEntity.ok(ApiResponse.success("Código generado", codigoSugerido));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al generar código: " + e.getMessage()));
+        }
     }
 }

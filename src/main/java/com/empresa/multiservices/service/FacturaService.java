@@ -3,11 +3,11 @@ package com.empresa.multiservices.service;
 import com.empresa.multiservices.model.*;
 import com.empresa.multiservices.model.enums.EstadoFactura;
 import com.empresa.multiservices.model.enums.EstadoPedido;
-import com.empresa.multiservices.repository.ClienteRepository;
-import com.empresa.multiservices.repository.FacturaRepository;
-import com.empresa.multiservices.repository.OrdenTrabajoRepository;
-import com.empresa.multiservices.repository.PedidoRepository;
+import com.empresa.multiservices.model.enums.TipoItemFactura;
+import com.empresa.multiservices.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,20 +24,70 @@ public class FacturaService {
     private final ClienteRepository clienteRepository;
     private final OrdenTrabajoRepository ordenTrabajoRepository;
     private final PedidoRepository pedidoRepository;
+    private final RepuestoRepository repuestoRepository;
+    private final MovimientoStockRepository movimientoStockRepository;
+    private final ServicioCatalogoRepository servicioCatalogoRepository;
+    private final TimbradoService timbradoService;
 
     @Transactional(readOnly = true)
     public List<Factura> listarTodas() {
-        return facturaRepository.findAll();
+        List<Factura> facturas = facturaRepository.findAll();
+        // Forzar la carga de los items para cada factura y calcular totales
+        for (Factura f : facturas) {
+            f.getItems().size();
+            // Calcular totales desde los items si están en 0
+            if ((f.getSubtotal() == null || f.getSubtotal().compareTo(BigDecimal.ZERO) == 0)
+                && f.getItems() != null && !f.getItems().isEmpty()) {
+                calcularTotalesDesdeItems(f);
+            }
+        }
+        return facturas;
     }
 
     @Transactional(readOnly = true)
     public Factura obtenerPorId(Long id) {
-        return facturaRepository.findById(id)
+        Factura factura = facturaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Factura no encontrada"));
+
+        // Calcular totales desde los items si están en 0
+        if ((factura.getSubtotal() == null || factura.getSubtotal().compareTo(BigDecimal.ZERO) == 0)
+            && factura.getItems() != null && !factura.getItems().isEmpty()) {
+            calcularTotalesDesdeItems(factura);
+        }
+
+        return factura;
+    }
+
+    private void calcularTotalesDesdeItems(Factura factura) {
+        BigDecimal subtotal = BigDecimal.ZERO;
+
+        for (FacturaItem item : factura.getItems()) {
+            subtotal = subtotal.add(item.getSubtotal());
+        }
+
+        BigDecimal tasaIVA = new BigDecimal("0.10");
+        BigDecimal iva = subtotal.multiply(tasaIVA).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal total = subtotal.add(iva);
+
+        factura.setSubtotal(subtotal);
+        factura.setIva(iva);
+        factura.setTotal(total);
     }
 
     @Transactional
     public Factura crear(Factura factura) {
+        // LOG: Ver qué llega al backend
+        System.out.println("=== FACTURA RECIBIDA EN BACKEND ===");
+        System.out.println("Items recibidos: " + (factura.getItems() != null ? factura.getItems().size() : "null"));
+        System.out.println("Subtotal: " + factura.getSubtotal());
+        System.out.println("IVA: " + factura.getIva());
+        System.out.println("Total: " + factura.getTotal());
+        if (factura.getItems() != null) {
+            factura.getItems().forEach(item -> {
+                System.out.println("  - Item: " + item.getDescripcion() + " | Cantidad: " + item.getCantidad() + " | Precio: " + item.getPrecioUnitario());
+            });
+        }
+
         // Validar cliente
         if (factura.getCliente() == null || factura.getCliente().getIdCliente() == null) {
             throw new IllegalArgumentException("El cliente es obligatorio");
@@ -59,9 +109,24 @@ public class FacturaService {
             }
         }
 
-        // Generar número de factura si no existe
+        // Validar y cargar el timbrado
+        Timbrado timbrado = null;
+        if (factura.getTimbradoObj() != null && factura.getTimbradoObj().getIdTimbrado() != null) {
+            timbrado = timbradoService.obtenerPorId(factura.getTimbradoObj().getIdTimbrado());
+            factura.setTimbradoObj(timbrado);
+            factura.setTimbrado(timbrado.getNumero());
+            factura.setFechaVencimiento(timbrado.getFechaVencimiento());
+        }
+
+        // Generar número de factura desde el timbrado
         if (factura.getNumeroFactura() == null || factura.getNumeroFactura().trim().isEmpty()) {
-            factura.setNumeroFactura(generarNumeroFactura());
+            if (timbrado != null) {
+                String siguienteNumero = timbradoService.obtenerSiguienteNumeroFactura(timbrado.getIdTimbrado());
+                factura.setNumeroFactura(siguienteNumero);
+            } else {
+                // Fallback: generar número sin timbrado (no recomendado)
+                factura.setNumeroFactura(generarNumeroFactura());
+            }
         }
 
         // El pedido debe existir (viene de la OT o es requerido)
@@ -69,12 +134,46 @@ public class FacturaService {
             throw new IllegalArgumentException("La factura debe estar asociada a un pedido (a través de una orden de trabajo)");
         }
 
+        // Validar que subtotal no sea null
+        if (factura.getSubtotal() == null) {
+            factura.setSubtotal(java.math.BigDecimal.ZERO);
+        }
+
+        // CRÍTICO: Establecer la relación bidireccional con los items
+        if (factura.getItems() != null && !factura.getItems().isEmpty()) {
+            for (FacturaItem item : factura.getItems()) {
+                item.setFactura(factura);
+                // Si no tiene tipoItem, asignar SERVICIO por defecto
+                if (item.getTipoItem() == null) {
+                    item.setTipoItem(com.empresa.multiservices.model.enums.TipoItemFactura.SERVICIO);
+                }
+
+                // Cargar referencias a servicios y repuestos según el tipo de item
+                if (item.getTipoItem() == TipoItemFactura.SERVICIO && item.getServicio() != null && item.getServicio().getIdServicio() != null) {
+                    ServicioCatalogo servicio = servicioCatalogoRepository.findById(item.getServicio().getIdServicio())
+                            .orElseThrow(() -> new RuntimeException("Servicio no encontrado con ID: " + item.getServicio().getIdServicio()));
+                    item.setServicio(servicio);
+                }
+
+                if (item.getTipoItem() == TipoItemFactura.REPUESTO && item.getRepuesto() != null && item.getRepuesto().getIdRepuesto() != null) {
+                    Repuesto repuesto = repuestoRepository.findById(item.getRepuesto().getIdRepuesto())
+                            .orElseThrow(() -> new RuntimeException("Repuesto no encontrado con ID: " + item.getRepuesto().getIdRepuesto()));
+                    item.setRepuesto(repuesto);
+                }
+            }
+        }
+
         Factura saved = facturaRepository.save(factura);
 
-        // Actualizar estado del pedido a FACTURADO
+        // ===================================================================
+        // DESCUENTO AUTOMÁTICO DE STOCK Y REGISTRO DE MOVIMIENTOS
+        // ===================================================================
+        procesarDescuentoStockYMovimientos(saved);
+
+        // Actualizar estado del pedido a COMPLETADO
         if (saved.getPedido() != null) {
             Pedido pedido = saved.getPedido();
-            pedido.setEstado(EstadoPedido.FACTURADO);
+            pedido.setEstado(EstadoPedido.COMPLETADO);
             pedidoRepository.save(pedido);
         }
 
@@ -119,8 +218,89 @@ public class FacturaService {
 
     @Transactional
     public void eliminar(Long id) {
+        // Las facturas no se pueden eliminar por regla de negocio
+        throw new RuntimeException("Las facturas no se pueden eliminar. Use la opción de anular factura.");
+    }
+
+    @Transactional
+    public Factura anular(Long id) {
         Factura factura = obtenerPorId(id);
-        facturaRepository.delete(factura);
+
+        // Validar que la factura no esté ya anulada
+        if (factura.getEstado() == EstadoFactura.ANULADA) {
+            throw new RuntimeException("La factura ya está anulada");
+        }
+
+        System.out.println("===================================================");
+        System.out.println("ANULANDO FACTURA: " + factura.getNumeroFactura());
+
+        // Devolver stock de repuestos
+        procesarDevolucionStock(factura);
+
+        // Cambiar estado a ANULADA
+        factura.setEstado(EstadoFactura.ANULADA);
+
+        return facturaRepository.save(factura);
+    }
+
+    /**
+     * Procesa la devolución de stock al anular una factura
+     * Incrementa el stock de los repuestos que fueron descontados y registra movimientos
+     */
+    private void procesarDevolucionStock(Factura factura) {
+        if (factura.getItems() == null || factura.getItems().isEmpty()) {
+            return;
+        }
+
+        System.out.println("PROCESANDO DEVOLUCIÓN DE STOCK");
+        System.out.println("Factura: " + factura.getNumeroFactura());
+
+        // Obtener usuario actual (para registro de movimiento)
+        Usuario usuario = obtenerUsuarioActual();
+
+        for (FacturaItem item : factura.getItems()) {
+            // Solo procesar items de tipo REPUESTO que tengan referencia al repuesto
+            if (item.getTipoItem() == TipoItemFactura.REPUESTO && item.getRepuesto() != null) {
+                Repuesto repuesto = item.getRepuesto();
+                int cantidadADevolver = item.getCantidad().intValue();
+
+                System.out.println("---------------------------------------------------");
+                System.out.println("Repuesto: " + repuesto.getNombre() + " (" + repuesto.getCodigo() + ")");
+                System.out.println("Stock actual: " + repuesto.getStockActual());
+                System.out.println("Cantidad a devolver: " + cantidadADevolver);
+
+                // Guardar stock anterior
+                int stockAnterior = repuesto.getStockActual();
+
+                // DEVOLVER STOCK
+                repuesto.setStockActual(stockAnterior + cantidadADevolver);
+                repuestoRepository.save(repuesto);
+
+                System.out.println("✅ Stock devuelto. Nuevo stock: " + repuesto.getStockActual());
+
+                // REGISTRAR MOVIMIENTO DE STOCK (ENTRADA por anulación)
+                MovimientoStock movimiento = MovimientoStock.builder()
+                        .repuesto(repuesto)
+                        .tipoMovimiento(MovimientoStock.TipoMovimiento.ENTRADA)
+                        .cantidad(cantidadADevolver)
+                        .motivo(MovimientoStock.MotivoMovimiento.DEVOLUCION)
+                        .referencia("ANULACIÓN FACTURA: " + factura.getNumeroFactura())
+                        .stockAnterior(stockAnterior)
+                        .stockNuevo(repuesto.getStockActual())
+                        .usuario(usuario)
+                        .factura(factura)
+                        .fechaMovimiento(LocalDateTime.now())
+                        .observaciones("Devolución automática por anulación de factura")
+                        .build();
+
+                movimientoStockRepository.save(movimiento);
+
+                System.out.println("✅ Movimiento de devolución registrado (ID: " + movimiento.getIdMovimiento() + ")");
+            }
+        }
+
+        System.out.println("===================================================");
+        System.out.println("DEVOLUCIÓN DE STOCK COMPLETADA");
     }
 
     @Transactional(readOnly = true)
@@ -131,6 +311,98 @@ public class FacturaService {
     @Transactional(readOnly = true)
     public List<Factura> listarPorCliente(Long idCliente) {
         return facturaRepository.findByClienteIdCliente(idCliente);
+    }
+
+    /**
+     * Procesa el descuento automático de stock y registra movimientos para items de tipo REPUESTO
+     * Este método se ejecuta automáticamente al crear una factura
+     */
+    private void procesarDescuentoStockYMovimientos(Factura factura) {
+        if (factura.getItems() == null || factura.getItems().isEmpty()) {
+            return;
+        }
+
+        System.out.println("===================================================");
+        System.out.println("PROCESANDO DESCUENTO DE STOCK Y MOVIMIENTOS");
+        System.out.println("Factura: " + factura.getNumeroFactura());
+        System.out.println("Total items: " + factura.getItems().size());
+
+        // Obtener usuario actual (para registro de movimiento)
+        Usuario usuario = obtenerUsuarioActual();
+
+        for (FacturaItem item : factura.getItems()) {
+            // Solo procesar items de tipo REPUESTO que tengan referencia al repuesto
+            if (item.getTipoItem() == TipoItemFactura.REPUESTO && item.getRepuesto() != null) {
+                Repuesto repuesto = item.getRepuesto();
+                int cantidadADescontar = item.getCantidad().intValue();
+
+                System.out.println("---------------------------------------------------");
+                System.out.println("Repuesto: " + repuesto.getNombre() + " (" + repuesto.getCodigo() + ")");
+                System.out.println("Stock actual: " + repuesto.getStockActual());
+                System.out.println("Cantidad a descontar: " + cantidadADescontar);
+
+                // Validar que haya stock suficiente
+                if (repuesto.getStockActual() < cantidadADescontar) {
+                    throw new RuntimeException(
+                        "ERROR: Stock insuficiente para el repuesto '" + repuesto.getNombre() + "'. " +
+                        "Stock disponible: " + repuesto.getStockActual() + ", " +
+                        "Cantidad requerida: " + cantidadADescontar
+                    );
+                }
+
+                // Guardar stock anterior
+                int stockAnterior = repuesto.getStockActual();
+
+                // DESCONTAR STOCK
+                repuesto.setStockActual(stockAnterior - cantidadADescontar);
+                repuestoRepository.save(repuesto);
+
+                System.out.println("✅ Stock descontado. Nuevo stock: " + repuesto.getStockActual());
+
+                // REGISTRAR MOVIMIENTO DE STOCK
+                MovimientoStock movimiento = MovimientoStock.builder()
+                        .repuesto(repuesto)
+                        .tipoMovimiento(MovimientoStock.TipoMovimiento.SALIDA)
+                        .cantidad(cantidadADescontar)
+                        .motivo(MovimientoStock.MotivoMovimiento.VENTA)
+                        .referencia("FACTURA: " + factura.getNumeroFactura())
+                        .stockAnterior(stockAnterior)
+                        .stockNuevo(repuesto.getStockActual())
+                        .usuario(usuario)
+                        .factura(factura)
+                        .fechaMovimiento(LocalDateTime.now())
+                        .observaciones("Descuento automático por facturación")
+                        .build();
+
+                movimientoStockRepository.save(movimiento);
+
+                System.out.println("✅ Movimiento de stock registrado (ID: " + movimiento.getIdMovimiento() + ")");
+            }
+        }
+
+        System.out.println("===================================================");
+        System.out.println("DESCUENTO DE STOCK COMPLETADO");
+    }
+
+    /**
+     * Obtiene el usuario actual desde el contexto de seguridad
+     * Si no hay usuario autenticado, retorna null
+     */
+    private Usuario obtenerUsuarioActual() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
+                org.springframework.security.core.userdetails.UserDetails userDetails =
+                        (org.springframework.security.core.userdetails.UserDetails) authentication.getPrincipal();
+                String username = userDetails.getUsername();
+                // Aquí deberías tener un UsuarioRepository para buscar por username
+                // Por ahora retornamos null, el campo usuario en MovimientoStock es opcional
+                return null;
+            }
+        } catch (Exception e) {
+            System.out.println("⚠️ No se pudo obtener usuario actual: " + e.getMessage());
+        }
+        return null;
     }
 
     private String generarNumeroFactura() {

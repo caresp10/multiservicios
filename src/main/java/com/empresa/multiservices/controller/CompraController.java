@@ -43,7 +43,6 @@ public class CompraController {
             }
             compra.setNumeroFactura(compraDTO.getNumeroFactura());
             compra.setFormaPago(compraDTO.getFormaPago());
-            compra.setEstado(compraDTO.getEstado() != null ? compraDTO.getEstado() : "PENDIENTE");
             compra.setObservaciones(compraDTO.getObservaciones());
             // Map detalles
             if (compraDTO.getDetalles() != null) {
@@ -66,32 +65,14 @@ public class CompraController {
                 }
                 compra.setDetalles(detalles);
             }
+
+            // Crear compra (automáticamente actualiza el stock)
             Compra nuevaCompra = compraService.crear(compra);
+
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success("Compra creada exitosamente", nuevaCompra));
+                    .body(ApiResponse.success("Compra registrada exitosamente. Stock actualizado.", nuevaCompra));
         }
 
-    @PostMapping("/{idCompra}/detalles")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
-    public ResponseEntity<ApiResponse> agregarDetalle(@PathVariable Long idCompra,
-                                                       @Valid @RequestBody DetalleCompra detalle) {
-        Compra compra = compraService.agregarDetalle(idCompra, detalle);
-        return ResponseEntity.ok(ApiResponse.success("Detalle agregado exitosamente", compra));
-    }
-
-    @PatchMapping("/{idCompra}/completar")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
-    public ResponseEntity<ApiResponse> completar(@PathVariable Long idCompra) {
-        Compra compra = compraService.completarCompra(idCompra);
-        return ResponseEntity.ok(ApiResponse.success("Compra completada y stock actualizado", compra));
-    }
-
-    @PatchMapping("/{idCompra}/cancelar")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
-    public ResponseEntity<ApiResponse> cancelar(@PathVariable Long idCompra) {
-        Compra compra = compraService.cancelarCompra(idCompra);
-        return ResponseEntity.ok(ApiResponse.success("Compra cancelada exitosamente", compra));
-    }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
@@ -112,13 +93,6 @@ public class CompraController {
     public ResponseEntity<ApiResponse> listarTodas() {
         List<Compra> compras = compraService.listarTodas();
         return ResponseEntity.ok(ApiResponse.success("Lista de compras", compras));
-    }
-
-    @GetMapping("/estado/{estado}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
-    public ResponseEntity<ApiResponse> listarPorEstado(@PathVariable String estado) {
-        List<Compra> compras = compraService.listarPorEstado(estado);
-        return ResponseEntity.ok(ApiResponse.success("Compras por estado", compras));
     }
 
     @GetMapping("/proveedor/{idProveedor}")

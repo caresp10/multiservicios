@@ -195,6 +195,82 @@
                                 <textarea class="form-control" id="observaciones" rows="2"
                                           placeholder="Observaciones o instrucciones especiales..."></textarea>
                             </div>
+
+                            <!-- Sección de Repuestos para la OT -->
+                            <div class="col-12 mb-3" id="seccionRepuestosAdmin">
+                                <hr class="my-3">
+                                <label class="form-label">
+                                    <i class="fas fa-cogs"></i> <strong>Repuestos para la Orden</strong>
+                                </label>
+
+                                <!-- Selector de Repuestos -->
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-md-4">
+                                                <label for="selectRepuestoOT" class="form-label small">Repuesto</label>
+                                                <select class="form-select" id="selectRepuestoOT" onchange="seleccionarRepuestoOT()">
+                                                    <option value="">Seleccione un repuesto...</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label for="repuestoOTCantidad" class="form-label small">Cantidad</label>
+                                                <input type="number" class="form-control" id="repuestoOTCantidad"
+                                                       step="1" min="1" value="1" placeholder="1">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label for="repuestoOTStock" class="form-label small">Stock Disp.</label>
+                                                <input type="text" class="form-control" id="repuestoOTStock"
+                                                       placeholder="-" readonly>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label for="repuestoOTPrecio" class="form-label small">Precio</label>
+                                                <input type="number" class="form-control" id="repuestoOTPrecio"
+                                                       step="0.01" min="0" placeholder="0.00" readonly>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <button type="button" class="btn btn-info w-100" onclick="agregarRepuestoOT()">
+                                                    <i class="fas fa-plus"></i> Agregar
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2" id="repuestoOTInfo" style="display: none;">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle"></i>
+                                                <span id="repuestoOTDescripcionText"></span>
+                                            </small>
+                                        </div>
+                                        <div class="mt-2" id="repuestoOTAlerta" style="display: none;">
+                                            <small class="text-danger">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                <span id="repuestoOTAlertaText"></span>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Tabla de Repuestos Agregados -->
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Repuesto</th>
+                                                <th width="100">Cantidad</th>
+                                                <th width="120">Precio Unit.</th>
+                                                <th width="120">Subtotal</th>
+                                                <th width="80">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="repuestosOTTableBody">
+                                            <tr>
+                                                <td colspan="5" class="text-center text-muted">
+                                                    <small>No hay repuestos agregados</small>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Sección de Trabajo del Técnico (solo visible si hay datos) -->

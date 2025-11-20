@@ -149,29 +149,140 @@
                                     <i class="fas fa-list"></i> <strong>Items del Presupuesto</strong>
                                 </label>
 
-                                <!-- Formulario inline para agregar item -->
-                                <div class="card mb-3">
-                                    <div class="card-body">
-                                        <div class="row g-2 align-items-end">
-                                            <div class="col-md-5">
-                                                <label for="itemDescripcion" class="form-label small">Descripcion</label>
-                                                <input type="text" class="form-control" id="itemDescripcion"
-                                                       placeholder="Ej: Servicio de plomeria">
+                                <!-- Tabs para selección de tipo de item -->
+                                <ul class="nav nav-tabs mb-3" id="itemTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="servicios-tab" data-bs-toggle="tab"
+                                                data-bs-target="#servicios-panel" type="button" role="tab">
+                                            <i class="fas fa-concierge-bell"></i> Servicios
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="repuestos-tab" data-bs-toggle="tab"
+                                                data-bs-target="#repuestos-panel" type="button" role="tab">
+                                            <i class="fas fa-cogs"></i> Repuestos
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="manual-tab" data-bs-toggle="tab"
+                                                data-bs-target="#manual-panel" type="button" role="tab">
+                                            <i class="fas fa-keyboard"></i> Manual
+                                        </button>
+                                    </li>
+                                </ul>
+
+                                <div class="tab-content" id="itemTabsContent">
+                                    <!-- Panel de Servicios del Catálogo -->
+                                    <div class="tab-pane fade show active" id="servicios-panel" role="tabpanel">
+                                        <div class="card mb-3">
+                                            <div class="card-body">
+                                                <div class="row g-2 align-items-end">
+                                                    <div class="col-md-6">
+                                                        <label for="selectServicio" class="form-label small">Servicio</label>
+                                                        <select class="form-select" id="selectServicio" onchange="seleccionarServicio()">
+                                                            <option value="">Seleccione un servicio...</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label for="servicioCantidad" class="form-label small">Cantidad</label>
+                                                        <input type="number" class="form-control" id="servicioCantidad"
+                                                               step="0.01" min="0.01" value="1" placeholder="1">
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label for="servicioPrecio" class="form-label small">Precio</label>
+                                                        <input type="number" class="form-control" id="servicioPrecio"
+                                                               step="0.01" min="0" placeholder="0.00" readonly>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <button type="button" class="btn btn-success w-100" onclick="agregarServicio()">
+                                                            <i class="fas fa-plus"></i> Agregar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-2" id="servicioInfo" style="display: none;">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-info-circle"></i>
+                                                        <span id="servicioDescripcion"></span>
+                                                    </small>
+                                                </div>
                                             </div>
-                                            <div class="col-md-2">
-                                                <label for="itemCantidad" class="form-label small">Cantidad</label>
-                                                <input type="number" class="form-control" id="itemCantidad"
-                                                       step="0.01" min="0.01" value="1" placeholder="1">
+                                        </div>
+                                    </div>
+
+                                    <!-- Panel de Repuestos del Catálogo -->
+                                    <div class="tab-pane fade" id="repuestos-panel" role="tabpanel">
+                                        <div class="card mb-3">
+                                            <div class="card-body">
+                                                <div class="row g-2 align-items-end">
+                                                    <div class="col-md-4">
+                                                        <label for="selectRepuesto" class="form-label small">Repuesto</label>
+                                                        <select class="form-select" id="selectRepuesto" onchange="seleccionarRepuesto()">
+                                                            <option value="">Seleccione un repuesto...</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label for="repuestoCantidad" class="form-label small">Cantidad</label>
+                                                        <input type="number" class="form-control" id="repuestoCantidad"
+                                                               step="1" min="1" value="1" placeholder="1">
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label for="repuestoStock" class="form-label small">Stock Disp.</label>
+                                                        <input type="text" class="form-control" id="repuestoStock"
+                                                               placeholder="-" readonly>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label for="repuestoPrecio" class="form-label small">Precio</label>
+                                                        <input type="number" class="form-control" id="repuestoPrecio"
+                                                               step="0.01" min="0" placeholder="0.00" readonly>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <button type="button" class="btn btn-info w-100" onclick="agregarRepuesto()">
+                                                            <i class="fas fa-plus"></i> Agregar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-2" id="repuestoInfo" style="display: none;">
+                                                    <small id="repuestoDescripcion" class="text-muted">
+                                                        <i class="fas fa-info-circle"></i>
+                                                        <span id="repuestoDescripcionText"></span>
+                                                    </small>
+                                                </div>
+                                                <div class="mt-2" id="repuestoAlerta" style="display: none;">
+                                                    <small class="text-danger">
+                                                        <i class="fas fa-exclamation-triangle"></i>
+                                                        <span id="repuestoAlertaText"></span>
+                                                    </small>
+                                                </div>
                                             </div>
-                                            <div class="col-md-3">
-                                                <label for="itemPrecioUnitario" class="form-label small">Precio Unit.</label>
-                                                <input type="number" class="form-control" id="itemPrecioUnitario"
-                                                       step="0.01" min="0" placeholder="0.00">
-                                            </div>
-                                            <div class="col-md-2">
-                                                <button type="button" class="btn btn-primary w-100" onclick="agregarItem()">
-                                                    <i class="fas fa-plus"></i> Agregar
-                                                </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Panel de Ingreso Manual -->
+                                    <div class="tab-pane fade" id="manual-panel" role="tabpanel">
+                                        <div class="card mb-3">
+                                            <div class="card-body">
+                                                <div class="row g-2 align-items-end">
+                                                    <div class="col-md-5">
+                                                        <label for="itemDescripcion" class="form-label small">Descripcion</label>
+                                                        <input type="text" class="form-control" id="itemDescripcion"
+                                                               placeholder="Ej: Servicio de plomeria">
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label for="itemCantidad" class="form-label small">Cantidad</label>
+                                                        <input type="number" class="form-control" id="itemCantidad"
+                                                               step="0.01" min="0.01" value="1" placeholder="1">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label for="itemPrecioUnitario" class="form-label small">Precio Unit.</label>
+                                                        <input type="number" class="form-control" id="itemPrecioUnitario"
+                                                               step="0.01" min="0" placeholder="0.00">
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <button type="button" class="btn btn-primary w-100" onclick="agregarItem()">
+                                                            <i class="fas fa-plus"></i> Agregar
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

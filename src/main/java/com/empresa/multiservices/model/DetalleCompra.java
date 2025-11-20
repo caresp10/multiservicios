@@ -1,5 +1,6 @@
 package com.empresa.multiservices.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
@@ -26,6 +27,7 @@ public class DetalleCompra {
     @JoinColumn(name = "id_compra", nullable = false)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
+    @JsonIgnore
     private Compra compra;
 
     @NotNull(message = "El repuesto es obligatorio")

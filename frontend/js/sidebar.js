@@ -100,25 +100,50 @@ function adjustMenuByRole() {
         if (menuInventario) menuInventario.style.display = 'none';
         if (menuAdministracion) menuAdministracion.style.display = 'none';
         if (menuReportes) menuReportes.style.display = 'none';
-    } else {
-        // Para otros roles: ocultar "Mis Órdenes"
+    } else if (user.rol === 'RECEPCION') {
+        // Para RECEPCION (Secretaria): Clientes, Pedidos, Presupuestos, Facturas
         if (menuMisOrdenes) menuMisOrdenes.style.display = 'none';
-
-        // Mostrar los demás menús (según permisos ya configurados)
+        if (menuClientes) menuClientes.style.display = 'block';
+        if (menuPedidos) menuPedidos.style.display = 'block';
+        if (menuPresupuestos) menuPresupuestos.style.display = 'block';
+        if (menuOrdenes) menuOrdenes.style.display = 'none';
+        if (menuFacturas) menuFacturas.style.display = 'block';
+        if (menuInventario) menuInventario.style.display = 'none';
+        if (menuAdministracion) menuAdministracion.style.display = 'none';
+        if (menuReportes) menuReportes.style.display = 'none';
+    } else if (user.rol === 'SUPERVISOR') {
+        // Para SUPERVISOR: Todo excepto Administración e Inventario
+        if (menuMisOrdenes) menuMisOrdenes.style.display = 'none';
         if (menuClientes) menuClientes.style.display = 'block';
         if (menuPedidos) menuPedidos.style.display = 'block';
         if (menuPresupuestos) menuPresupuestos.style.display = 'block';
         if (menuOrdenes) menuOrdenes.style.display = 'block';
         if (menuFacturas) menuFacturas.style.display = 'block';
+        if (menuInventario) menuInventario.style.display = 'none';
+        if (menuAdministracion) menuAdministracion.style.display = 'none';
         if (menuReportes) menuReportes.style.display = 'block';
-
-        // El menú de Inventario solo para ADMIN y DUENO
-        if (user.rol === 'ADMIN' || user.rol === 'DUENO') {
-            if (menuInventario) menuInventario.style.display = 'block';
-        } else {
-            if (menuInventario) menuInventario.style.display = 'none';
-        }
-        // menuAdministracion ya se maneja en hideMenuForNonAdmin()
+    } else if (user.rol === 'DUENO') {
+        // Para DUENO: Acceso completo excepto Administración de usuarios
+        if (menuMisOrdenes) menuMisOrdenes.style.display = 'none';
+        if (menuClientes) menuClientes.style.display = 'block';
+        if (menuPedidos) menuPedidos.style.display = 'block';
+        if (menuPresupuestos) menuPresupuestos.style.display = 'block';
+        if (menuOrdenes) menuOrdenes.style.display = 'block';
+        if (menuFacturas) menuFacturas.style.display = 'block';
+        if (menuInventario) menuInventario.style.display = 'block';
+        if (menuAdministracion) menuAdministracion.style.display = 'none';
+        if (menuReportes) menuReportes.style.display = 'block';
+    } else {
+        // Para ADMIN: Acceso completo
+        if (menuMisOrdenes) menuMisOrdenes.style.display = 'none';
+        if (menuClientes) menuClientes.style.display = 'block';
+        if (menuPedidos) menuPedidos.style.display = 'block';
+        if (menuPresupuestos) menuPresupuestos.style.display = 'block';
+        if (menuOrdenes) menuOrdenes.style.display = 'block';
+        if (menuFacturas) menuFacturas.style.display = 'block';
+        if (menuInventario) menuInventario.style.display = 'block';
+        if (menuAdministracion) menuAdministracion.style.display = 'block';
+        if (menuReportes) menuReportes.style.display = 'block';
     }
 }
 

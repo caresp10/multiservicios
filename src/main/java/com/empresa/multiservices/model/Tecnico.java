@@ -50,6 +50,12 @@ public class Tecnico {
     @Column(name = "nivel_experiencia", length = 50)
     private String nivelExperiencia; // JUNIOR, SEMI_SENIOR, SENIOR
 
+    // Categoría de servicio en la que se especializa el técnico
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_categoria")
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private CategoriaServicio categoria;
+
     @Column(columnDefinition = "TEXT")
     private String observaciones;
 

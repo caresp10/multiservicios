@@ -2,6 +2,7 @@ package com.empresa.multiservices.model;
 
 import com.empresa.multiservices.model.enums.EstadoFactura;
 import com.empresa.multiservices.model.enums.FormaPago;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -30,18 +31,22 @@ public class Factura {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_pedido", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "facturas", "ordenesTrabajo", "presupuestos"})
     private Pedido pedido;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_ot")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "pedido", "presupuesto", "repuestos", "tecnico"})
     private OrdenTrabajo ot;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_presupuesto")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "pedido", "items"})
     private Presupuesto presupuesto;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
+
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_cliente", nullable = false)
+    @JsonIgnoreProperties({"facturas", "pedidos"})
     private Cliente cliente;
     
     @CreationTimestamp
@@ -85,7 +90,12 @@ public class Factura {
     
     @Column(length = 20)
     private String timbrado;
-    
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_timbrado")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Timbrado timbradoObj;
+
     @OneToMany(mappedBy = "factura", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<FacturaItem> items = new ArrayList<>();

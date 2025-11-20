@@ -16,6 +16,9 @@ let ordenes = [];
 let pedidos = [];
 let tecnicos = [];
 let ordenEnRevision = null;
+let repuestosCatalogo = [];
+let repuestoOTSeleccionado = null;
+let repuestosOT = [];
 const modal = new bootstrap.Modal(document.getElementById('modalOrden'));
 const modalRevision = new bootstrap.Modal(document.getElementById('modalRevisionOT'));
 
@@ -96,6 +99,12 @@ function renderOrdenes(data) {
                         title="Editar">
                     <i class="fas fa-edit"></i>
                 </button>
+                ${orden.tecnico && (orden.estado === 'ASIGNADA' || orden.estado === 'EN_PROCESO') ? `
+                <button class="btn btn-sm btn-outline-warning" onclick="reasignarTecnico(${orden.idOt})"
+                        title="Reasignar Técnico">
+                    <i class="fas fa-user-edit"></i>
+                </button>
+                ` : ''}
                 <button class="btn btn-sm btn-outline-danger" onclick="eliminarOrden(${orden.idOt})"
                         title="Eliminar">
                     <i class="fas fa-trash"></i>
@@ -162,7 +171,27 @@ async function cargarDatosFormulario() {
                         if (presupuestosResponse.success && presupuestosResponse.data && presupuestosResponse.data.length > 0) {
                             // Tomar el primer presupuesto aceptado
                             const presupuesto = presupuestosResponse.data[0];
-                            presupuestoInfo.value = `${presupuesto.numeroPresupuesto} - Total: ${formatMoney(presupuesto.total)}`;
+
+                            // Validar fecha de vencimiento
+                            let estadoVencimiento = '';
+                            if (presupuesto.fechaVencimiento) {
+                                const fechaVenc = new Date(presupuesto.fechaVencimiento);
+                                const hoy = new Date();
+                                hoy.setHours(0, 0, 0, 0);
+                                fechaVenc.setHours(0, 0, 0, 0);
+
+                                if (fechaVenc < hoy) {
+                                    estadoVencimiento = ' - VENCIDO';
+                                    alert('ADVERTENCIA: Este presupuesto ha vencido el ' + presupuesto.fechaVencimiento + '. Se recomienda generar uno nuevo.');
+                                } else {
+                                    const diasRestantes = Math.ceil((fechaVenc - hoy) / (1000 * 60 * 60 * 24));
+                                    if (diasRestantes <= 3) {
+                                        estadoVencimiento = ` - Vence en ${diasRestantes} día(s)`;
+                                    }
+                                }
+                            }
+
+                            presupuestoInfo.value = `${presupuesto.numeroPresupuesto} - Total: ${formatMoney(presupuesto.total)}${estadoVencimiento}`;
                             idPresupuestoHidden.value = presupuesto.idPresupuesto;
                         } else {
                             presupuestoInfo.value = 'No hay presupuestos aceptados para este pedido';
@@ -176,6 +205,26 @@ async function cargarDatosFormulario() {
                             // Copiar la descripción del pedido a descripción del trabajo
                             if (pedido.descripcion) {
                                 descripcionTrabajo.value = pedido.descripcion;
+                            }
+
+                            // Filtrar técnicos por categoría del pedido
+                            const selectTecnico = document.getElementById('idTecnicoAsignado');
+                            const categoriaIdPedido = pedido.categoria?.idCategoria;
+
+                            if (categoriaIdPedido && tecnicos.length > 0) {
+                                // Filtrar técnicos que coincidan con la categoría del pedido o que no tengan categoría asignada
+                                const tecnicosFiltrados = tecnicos.filter(t =>
+                                    !t.categoria || t.categoria.idCategoria === categoriaIdPedido
+                                );
+
+                                selectTecnico.innerHTML = '<option value="">Sin asignar</option>' +
+                                    tecnicosFiltrados.map(t =>
+                                        `<option value="${t.idTecnico}">${t.nombre} ${t.apellido}${t.especialidad ? ' - ' + t.especialidad : ''}${t.categoria ? ' (' + t.categoria.nombre + ')' : ''}</option>`
+                                    ).join('');
+
+                                if (tecnicosFiltrados.length === 0) {
+                                    selectTecnico.innerHTML += '<option disabled>No hay técnicos disponibles para esta categoría</option>';
+                                }
                             }
                         }
                     } catch (error) {
@@ -218,7 +267,12 @@ async function openModalOrden() {
     document.getElementById('ordenForm').reset();
     document.getElementById('ordenId').value = '';
 
+    // Limpiar repuestos de OT
+    repuestosOT = [];
+    renderRepuestosOTTable();
+
     await cargarDatosFormulario();
+    await cargarRepuestosOT();
     modal.show();
 }
 
@@ -278,13 +332,25 @@ function mostrarTrabajoTecnico(orden) {
                                  orden.horasTrabajadas || orden.costoManoObra;
 
     if (tieneTrabajoTecnico) {
+        // Calcular costo de mano de obra desde servicios del presupuesto
+        let costoManoObraCalculado = 0;
+        if (orden.presupuesto && orden.presupuesto.items && orden.presupuesto.items.length > 0) {
+            costoManoObraCalculado = orden.presupuesto.items
+                .filter(item => item.tipoItem === 'SERVICIO')
+                .reduce((total, item) => total + (parseFloat(item.subtotal) || 0), 0);
+        }
+
         // Llenar campos
         document.getElementById('viewDiagnostico').value = orden.diagnosticoTecnico || 'No especificado';
         document.getElementById('viewInforme').value = orden.informeFinal || 'No especificado';
         document.getElementById('viewHoras').value = orden.horasTrabajadas ?
             `${orden.horasTrabajadas} horas` : 'No especificado';
-        document.getElementById('viewCostoManoObra').value = orden.costoManoObra ?
-            formatMoney(orden.costoManoObra) : 'No especificado';
+
+        // Mostrar el costo de mano de obra calculado desde servicios o el guardado
+        const costoManoObraFinal = costoManoObraCalculado > 0 ? costoManoObraCalculado : (orden.costoManoObra || 0);
+        document.getElementById('viewCostoManoObra').value = costoManoObraFinal > 0 ?
+            formatMoney(costoManoObraFinal) : 'No especificado';
+
         document.getElementById('viewPresupuestoFinal').value = orden.presupuestoFinal ?
             formatMoney(orden.presupuestoFinal) : (orden.presupuesto?.total ? formatMoney(orden.presupuesto.total) : 'No especificado');
 
@@ -380,6 +446,149 @@ async function eliminarOrden(id) {
     }
 }
 
+// Reasignar técnico a una OT
+async function reasignarTecnico(idOt) {
+    try {
+        // Cargar la OT actual
+        const response = await OrdenTrabajoService.getById(idOt);
+        if (!response.success || !response.data) {
+            throw new Error('No se pudo cargar la orden de trabajo');
+        }
+
+        const orden = response.data;
+        const tecnicoActual = orden.tecnico;
+        const categoriaIdPedido = orden.pedido?.categoria?.idCategoria;
+
+        // Cargar técnicos activos
+        const tecnicosResponse = await TecnicoService.getAll();
+        if (!tecnicosResponse.success) {
+            throw new Error('No se pudo cargar la lista de técnicos');
+        }
+
+        let tecnicosDisponibles = tecnicosResponse.data.filter(t => t.activo);
+
+        // Si hay categoría, filtrar técnicos por categoría
+        if (categoriaIdPedido) {
+            tecnicosDisponibles = tecnicosDisponibles.filter(t =>
+                !t.categoria || t.categoria.idCategoria === categoriaIdPedido
+            );
+        }
+
+        // Excluir el técnico actual
+        tecnicosDisponibles = tecnicosDisponibles.filter(t => t.idTecnico !== tecnicoActual?.idTecnico);
+
+        if (tecnicosDisponibles.length === 0) {
+            alert('No hay otros técnicos disponibles para reasignar');
+            return;
+        }
+
+        // Crear el HTML del select para el modal de confirmación
+        const opcionesTecnicos = tecnicosDisponibles.map(t =>
+            `<option value="${t.idTecnico}">${t.nombre} ${t.apellido}${t.especialidad ? ' - ' + t.especialidad : ''}${t.categoria ? ' (' + t.categoria.nombre + ')' : ''}</option>`
+        ).join('');
+
+        // Crear un modal temporal para la reasignación
+        const modalHtml = `
+            <div class="modal fade" id="modalReasignar" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-warning">
+                            <h5 class="modal-title"><i class="fas fa-user-edit"></i> Reasignar Técnico</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p><strong>OT:</strong> ${orden.numeroOt}</p>
+                            <p><strong>Técnico actual:</strong> ${tecnicoActual ? tecnicoActual.nombre + ' ' + tecnicoActual.apellido : 'Sin asignar'}</p>
+                            <div class="mb-3">
+                                <label class="form-label">Nuevo técnico *</label>
+                                <select class="form-select" id="nuevoTecnicoId" required>
+                                    <option value="">Seleccione un técnico</option>
+                                    ${opcionesTecnicos}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Motivo de reasignación</label>
+                                <textarea class="form-control" id="motivoReasignacion" rows="2" placeholder="Opcional"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-warning" onclick="confirmarReasignacion(${idOt})">
+                                <i class="fas fa-check"></i> Confirmar Reasignación
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Eliminar modal anterior si existe
+        const modalAnterior = document.getElementById('modalReasignar');
+        if (modalAnterior) modalAnterior.remove();
+
+        // Agregar el nuevo modal al DOM
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Mostrar el modal
+        const modalReasignar = new bootstrap.Modal(document.getElementById('modalReasignar'));
+        modalReasignar.show();
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al preparar reasignación: ' + error.message);
+    }
+}
+
+// Confirmar la reasignación del técnico
+async function confirmarReasignacion(idOt) {
+    const nuevoTecnicoId = document.getElementById('nuevoTecnicoId').value;
+    const motivoReasignacion = document.getElementById('motivoReasignacion').value;
+
+    if (!nuevoTecnicoId) {
+        alert('Debe seleccionar un técnico');
+        return;
+    }
+
+    try {
+        // Actualizar la OT con el nuevo técnico
+        const response = await OrdenTrabajoService.getById(idOt);
+        if (!response.success || !response.data) {
+            throw new Error('No se pudo cargar la orden de trabajo');
+        }
+
+        const orden = response.data;
+
+        // Preparar datos de actualización
+        const updateData = {
+            idPedido: orden.pedido?.idPedido,
+            idPresupuesto: orden.presupuesto?.idPresupuesto,
+            idTecnicoAsignado: parseInt(nuevoTecnicoId),
+            prioridad: orden.prioridad,
+            descripcionTrabajo: orden.descripcionTrabajo,
+            observaciones: (orden.observaciones || '') + (motivoReasignacion ? `\n[Reasignación: ${motivoReasignacion}]` : '')
+        };
+
+        const updateResponse = await OrdenTrabajoService.update(idOt, updateData);
+
+        if (updateResponse.success) {
+            // Cerrar modal
+            const modalElement = document.getElementById('modalReasignar');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            modalInstance.hide();
+            modalElement.remove();
+
+            // Recargar órdenes
+            await cargarOrdenes();
+            alert('Técnico reasignado exitosamente');
+        } else {
+            throw new Error(updateResponse.message || 'Error al reasignar técnico');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al reasignar técnico: ' + error.message);
+    }
+}
+
 // Funciones auxiliares
 function formatDate(dateString) {
     if (!dateString) return 'N/A';
@@ -451,8 +660,20 @@ function abrirModalRevision(orden) {
     document.getElementById('revDiagnostico').value = orden.diagnosticoTecnico || '';
     document.getElementById('revInforme').value = orden.informeFinal || '';
     document.getElementById('revHoras').value = orden.horasTrabajadas ? `${orden.horasTrabajadas} horas` : 'N/A';
-    document.getElementById('revCostoManoObra').value = orden.costoManoObra ?
-        formatMoney(orden.costoManoObra) : 'N/A';
+
+    // Calcular costo de mano de obra desde servicios del presupuesto
+    let costoManoObraCalculado = 0;
+    if (orden.presupuesto && orden.presupuesto.items && orden.presupuesto.items.length > 0) {
+        costoManoObraCalculado = orden.presupuesto.items
+            .filter(item => item.tipoItem === 'SERVICIO')
+            .reduce((total, item) => total + (parseFloat(item.subtotal) || 0), 0);
+    }
+
+    // Mostrar el costo de mano de obra calculado desde servicios o el guardado
+    const costoManoObraFinal = costoManoObraCalculado > 0 ? costoManoObraCalculado : (orden.costoManoObra || 0);
+    document.getElementById('revCostoManoObra').value = costoManoObraFinal > 0 ?
+        formatMoney(costoManoObraFinal) : 'N/A';
+
     document.getElementById('revPresupuestoInicial').value = orden.presupuesto?.total ?
         formatMoney(orden.presupuesto.total) : 'N/A';
 
@@ -579,8 +800,202 @@ async function devolverATecnico() {
     }
 }
 
+// ==============================================
+// FUNCIONES PARA REPUESTOS EN OT CON VALIDACIÓN DE STOCK
+// ==============================================
+
+// Cargar repuestos activos
+async function cargarRepuestosOT() {
+    try {
+        const response = await RepuestoService.getActivos();
+
+        if (response.success && response.data) {
+            repuestosCatalogo = response.data;
+            const select = document.getElementById('selectRepuestoOT');
+
+            select.innerHTML = '<option value="">Seleccione un repuesto...</option>' +
+                repuestosCatalogo.map(repuesto => {
+                    const stockBadge = getStockBadge(repuesto);
+                    return `
+                        <option value="${repuesto.idRepuesto}">
+                            ${repuesto.codigo} - ${repuesto.nombre} ${stockBadge} - ${formatCurrency(repuesto.precioVenta)}
+                        </option>
+                    `;
+                }).join('');
+        }
+    } catch (error) {
+        console.error('Error al cargar repuestos:', error);
+    }
+}
+
+// Hacer la función global
+window.cargarRepuestosOT = cargarRepuestosOT;
+
+// Obtener badge de stock
+function getStockBadge(repuesto) {
+    if (repuesto.stockActual === 0) {
+        return '(SIN STOCK)';
+    } else if (repuesto.stockActual <= repuesto.stockMinimo) {
+        return `(Stock bajo: ${repuesto.stockActual})`;
+    }
+    return `(Stock: ${repuesto.stockActual})`;
+}
+
+// Cuando se selecciona un repuesto
+function seleccionarRepuestoOT() {
+    const select = document.getElementById('selectRepuestoOT');
+    const repuestoId = parseInt(select.value);
+
+    if (!repuestoId) {
+        repuestoOTSeleccionado = null;
+        document.getElementById('repuestoOTPrecio').value = '';
+        document.getElementById('repuestoOTStock').value = '';
+        document.getElementById('repuestoOTInfo').style.display = 'none';
+        document.getElementById('repuestoOTAlerta').style.display = 'none';
+        return;
+    }
+
+    repuestoOTSeleccionado = repuestosCatalogo.find(r => r.idRepuesto === repuestoId);
+
+    if (repuestoOTSeleccionado) {
+        document.getElementById('repuestoOTPrecio').value = repuestoOTSeleccionado.precioVenta;
+        document.getElementById('repuestoOTStock').value = repuestoOTSeleccionado.stockActual;
+
+        // Mostrar información del repuesto
+        document.getElementById('repuestoOTDescripcionText').textContent =
+            `${repuestoOTSeleccionado.nombre} - ${repuestoOTSeleccionado.categoria?.nombre || 'Sin categoría'}`;
+        document.getElementById('repuestoOTInfo').style.display = 'block';
+
+        // Mostrar alerta si el stock es bajo o no hay stock
+        if (repuestoOTSeleccionado.stockActual === 0) {
+            document.getElementById('repuestoOTAlertaText').textContent =
+                'Este repuesto NO tiene stock disponible. No se puede agregar a la orden.';
+            document.getElementById('repuestoOTAlerta').style.display = 'block';
+        } else if (repuestoOTSeleccionado.stockActual <= repuestoOTSeleccionado.stockMinimo) {
+            document.getElementById('repuestoOTAlertaText').textContent =
+                `ADVERTENCIA: Stock bajo. Solo quedan ${repuestoOTSeleccionado.stockActual} unidades disponibles.`;
+            document.getElementById('repuestoOTAlerta').style.display = 'block';
+        } else {
+            document.getElementById('repuestoOTAlerta').style.display = 'none';
+        }
+    }
+}
+
+// Hacer la función global
+window.seleccionarRepuestoOT = seleccionarRepuestoOT;
+
+// Agregar repuesto a la OT con validación de stock
+function agregarRepuestoOT() {
+    if (!repuestoOTSeleccionado) {
+        alert('Por favor seleccione un repuesto');
+        return;
+    }
+
+    const cantidad = parseInt(document.getElementById('repuestoOTCantidad').value) || 0;
+    const precioUnitario = parseFloat(document.getElementById('repuestoOTPrecio').value) || 0;
+
+    if (cantidad <= 0) {
+        alert('La cantidad debe ser mayor a 0');
+        return;
+    }
+
+    // VALIDACIÓN DE STOCK EN TIEMPO REAL
+    if (repuestoOTSeleccionado.stockActual === 0) {
+        alert('ERROR: Este repuesto NO tiene stock disponible. No se puede agregar a la orden.');
+        return;
+    }
+
+    if (cantidad > repuestoOTSeleccionado.stockActual) {
+        alert(`ERROR: Stock insuficiente. Solo hay ${repuestoOTSeleccionado.stockActual} unidades disponibles.`);
+        return;
+    }
+
+    // Advertencia si se está comprometiendo mucho stock
+    if (cantidad > repuestoOTSeleccionado.stockActual * 0.8) {
+        if (!confirm(`ADVERTENCIA: Va a comprometer ${cantidad} de ${repuestoOTSeleccionado.stockActual} unidades disponibles (${Math.round(cantidad/repuestoOTSeleccionado.stockActual*100)}%). ¿Desea continuar?`)) {
+            return;
+        }
+    }
+
+    const repuesto = {
+        idRepuesto: repuestoOTSeleccionado.idRepuesto,
+        descripcion: `${repuestoOTSeleccionado.codigo} - ${repuestoOTSeleccionado.nombre}`,
+        cantidad: cantidad,
+        precioUnitario: precioUnitario,
+        subtotal: cantidad * precioUnitario,
+        stockDisponible: repuestoOTSeleccionado.stockActual
+    };
+
+    repuestosOT.push(repuesto);
+
+    // Limpiar formulario
+    document.getElementById('selectRepuestoOT').value = '';
+    document.getElementById('repuestoOTCantidad').value = '1';
+    document.getElementById('repuestoOTPrecio').value = '';
+    document.getElementById('repuestoOTStock').value = '';
+    document.getElementById('repuestoOTInfo').style.display = 'none';
+    document.getElementById('repuestoOTAlerta').style.display = 'none';
+    repuestoOTSeleccionado = null;
+
+    renderRepuestosOTTable();
+}
+
+// Hacer la función global
+window.agregarRepuestoOT = agregarRepuestoOT;
+
+// Eliminar repuesto de la OT
+function eliminarRepuestoOT(index) {
+    if (confirm('¿Desea eliminar este repuesto?')) {
+        repuestosOT.splice(index, 1);
+        renderRepuestosOTTable();
+    }
+}
+
+// Hacer la función global
+window.eliminarRepuestoOT = eliminarRepuestoOT;
+
+// Renderizar tabla de repuestos de OT
+function renderRepuestosOTTable() {
+    const tbody = document.getElementById('repuestosOTTableBody');
+
+    if (repuestosOT.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted">
+                    <small>No hay repuestos agregados</small>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = repuestosOT.map((repuesto, index) => `
+        <tr>
+            <td>${repuesto.descripcion}</td>
+            <td class="text-end">${repuesto.cantidad}</td>
+            <td class="text-end">${formatCurrency(repuesto.precioUnitario)}</td>
+            <td class="text-end"><strong>${formatCurrency(repuesto.subtotal)}</strong></td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-danger" onclick="eliminarRepuestoOT(${index})" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Formatear moneda
+function formatCurrency(amount) {
+    if (!amount && amount !== 0) return 'Gs. 0';
+    return 'Gs. ' + Number(amount).toLocaleString('es-PY', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    });
+}
+
 // Inicializar
 document.addEventListener('DOMContentLoaded', function() {
     cargarOrdenes();
     cargarDatosFormulario(); // Cargar técnicos para el filtro
+    cargarRepuestosOT(); // Cargar repuestos del catálogo
 });

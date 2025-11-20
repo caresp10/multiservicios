@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
         repuestoSelect.addEventListener('change', function() {
             const idRepuesto = parseInt(this.value);
             const repuesto = repuestos.find(r => r.idRepuesto === idRepuesto);
-            document.getElementById('precioDetalle').value = repuesto ? repuesto.precioVenta : 0;
+            document.getElementById('precioDetalle').value = repuesto ? repuesto.precioCosto : 0;
         });
     }
 });
@@ -68,11 +68,15 @@ async function cargarRepuestos() {
     try {
         const data = await ApiService.get('/repuestos');
         if (data.success) {
+            console.log('Total repuestos recibidos del backend:', data.data.length);
             repuestos = data.data.filter(r => r.activo);
+            console.log('Repuestos activos después del filtro:', repuestos.length);
+            console.log('Lista de repuestos activos:', repuestos.map(r => `${r.codigo} - ${r.nombre} (activo: ${r.activo})`));
+
             const select = document.getElementById('repuestoSelect');
             select.innerHTML = '<option value="">Seleccione un repuesto</option>';
             repuestos.forEach(r => {
-                select.innerHTML += `<option value="${r.idRepuesto}" data-precio="${r.precioCompra}">${r.codigo} - ${r.nombre}</option>`;
+                select.innerHTML += `<option value="${r.idRepuesto}" data-precio="${r.precioCosto}">${r.codigo} - ${r.nombre}</option>`;
             });
         }
     } catch (error) {
@@ -84,20 +88,11 @@ async function cargarRepuestos() {
 function renderizarCompras(lista) {
     const tbody = document.getElementById('comprasTable');
     if (!lista || lista.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No hay compras registradas</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay compras registradas</td></tr>';
         return;
     }
 
     tbody.innerHTML = lista.map(compra => {
-        let estadoBadge = '';
-        if (compra.estado === 'COMPLETADA') {
-            estadoBadge = '<span class="badge bg-success">COMPLETADA</span>';
-        } else if (compra.estado === 'PENDIENTE') {
-            estadoBadge = '<span class="badge bg-warning text-dark">PENDIENTE</span>';
-        } else {
-            estadoBadge = '<span class="badge bg-danger">CANCELADA</span>';
-        }
-
         return `
         <tr>
             <td><strong>${compra.numeroCompra}</strong></td>
@@ -105,22 +100,13 @@ function renderizarCompras(lista) {
             <td>${compra.proveedor?.nombre || '-'}</td>
             <td>${compra.numeroFactura || '-'}</td>
             <td>${formatearMoneda(compra.total)}</td>
-            <td>${estadoBadge}</td>
             <td>
                 <button class="btn btn-sm btn-info" onclick="verDetalles(${compra.idCompra})" title="Ver Detalles">
                     <i class="fas fa-eye"></i>
                 </button>
-                ${compra.estado === 'PENDIENTE' ? `
-                <button class="btn btn-sm btn-primary" onclick="editarCompra(${compra.idCompra})" title="Editar">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn btn-sm btn-success" onclick="completarCompra(${compra.idCompra})" title="Completar">
-                    <i class="fas fa-check"></i>
-                </button>
                 <button class="btn btn-sm btn-danger" onclick="eliminarCompra(${compra.idCompra})" title="Eliminar">
                     <i class="fas fa-trash"></i>
                 </button>
-                ` : ''}
             </td>
         </tr>
         `;
@@ -135,7 +121,6 @@ function openModalCompra() {
     document.getElementById('compraId').value = '';
     document.getElementById('fechaCompra').valueAsDate = new Date();
     document.getElementById('formaPago').value = 'EFECTIVO';
-    document.getElementById('estado').value = 'PENDIENTE';
     // Generar número de compra automático
     const fecha = new Date();
     const yyyy = fecha.getFullYear();
@@ -162,7 +147,6 @@ async function editarCompra(id) {
             document.getElementById('proveedor').value = compra.proveedor.idProveedor;
             document.getElementById('numeroFactura').value = compra.numeroFactura || '';
             document.getElementById('formaPago').value = compra.formaPago || 'EFECTIVO';
-            document.getElementById('estado').value = compra.estado || 'PENDIENTE';
             document.getElementById('observaciones').value = compra.observaciones || '';
 
             // Cargar detalles
@@ -306,7 +290,6 @@ async function guardarCompra() {
         proveedorId: parseInt(document.getElementById('proveedor').value),
         numeroFactura: document.getElementById('numeroFactura').value.trim() || null,
         formaPago: document.getElementById('formaPago').value,
-        estado: document.getElementById('estado').value,
         observaciones: document.getElementById('observaciones').value.trim() || null,
         detalles: detallesCompra.map(d => ({
             repuestoId: d.idRepuesto,
@@ -344,27 +327,6 @@ async function guardarCompra() {
     } catch (error) {
         console.error('Error guardando compra:', error);
         mostrarError('Error al guardar compra');
-    }
-}
-
-// Completar compra
-async function completarCompra(id) {
-    if (!confirm('¿Está seguro de completar esta compra? Se actualizará el stock de los repuestos.')) return;
-
-    try {
-        const data = await ApiService.request(`/compras/${id}/completar`, {
-            method: 'PATCH'
-        });
-
-        if (data.success) {
-            mostrarExito('Compra completada y stock actualizado');
-            cargarCompras();
-        } else {
-            mostrarError(data.message);
-        }
-    } catch (error) {
-        console.error('Error completando compra:', error);
-        mostrarError('Error al completar compra');
     }
 }
 
@@ -442,13 +404,6 @@ function displayUserInfo() {
         document.getElementById('userName').textContent = user.nombre;
         document.getElementById('userRole').textContent = user.rol;
         document.getElementById('userAvatar').textContent = user.nombre.charAt(0).toUpperCase();
-        // Mostrar token y rol para depuración
-        const infoDiv = document.createElement('div');
-        infoDiv.style.fontSize = '0.8em';
-        infoDiv.style.wordBreak = 'break-all';
-        infoDiv.className = 'text-muted mt-2';
-        infoDiv.innerHTML = `<strong>Token:</strong> ${AuthService.getToken() || '-'}<br><strong>Rol:</strong> ${user.rol}`;
-        document.querySelector('.user-info').appendChild(infoDiv);
     }
 }
 

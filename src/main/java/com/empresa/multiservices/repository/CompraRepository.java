@@ -16,14 +16,9 @@ public interface CompraRepository extends JpaRepository<Compra, Long> {
 
     List<Compra> findByProveedor_IdProveedor(Long idProveedor);
 
-    List<Compra> findByEstado(String estado);
-
     List<Compra> findByFechaCompraBetween(LocalDate fechaInicio, LocalDate fechaFin);
 
     boolean existsByNumeroCompra(String numeroCompra);
-
-    // Compras pendientes
-    List<Compra> findByEstadoOrderByFechaCompraDesc(String estado);
 
     // Últimas compras
     @Query("SELECT c FROM Compra c ORDER BY c.fechaCompra DESC, c.idCompra DESC")

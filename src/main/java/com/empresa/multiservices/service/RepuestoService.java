@@ -12,26 +12,21 @@ import java.util.List;
 @Service
 @Transactional
 public class RepuestoService {
-    @Autowired
-    private RepuestoHistorialPrecioService historialPrecioService;
-    public void actualizarPrecioCompra(Long id, java.math.BigDecimal nuevoPrecioCompra) {
-        Repuesto repuesto = obtenerPorId(id);
-        java.math.BigDecimal precioAnterior = repuesto.getPrecioCompra();
-        if (precioAnterior == null || precioAnterior.compareTo(nuevoPrecioCompra) != 0) {
-            repuesto.setPrecioCompra(nuevoPrecioCompra);
-            repuestoRepository.save(repuesto);
-            // Guardar en historial
-            historialPrecioService.registrarCambioPrecio(repuesto, nuevoPrecioCompra, repuesto.getPrecioVenta());
-        }
-    }
 
     @Autowired
     private RepuestoRepository repuestoRepository;
 
     public Repuesto crear(Repuesto repuesto) {
-        if (repuestoRepository.existsByCodigo(repuesto.getCodigo())) {
-            throw new IllegalArgumentException("Ya existe un repuesto con el código: " + repuesto.getCodigo());
+        // Generar código automáticamente si no se proporcionó o si está vacío
+        if (repuesto.getCodigo() == null || repuesto.getCodigo().trim().isEmpty()) {
+            repuesto.setCodigo(generarCodigoAutomatico());
+        } else {
+            // Validar que el código no exista
+            if (repuestoRepository.existsByCodigo(repuesto.getCodigo())) {
+                throw new IllegalArgumentException("Ya existe un repuesto con el código: " + repuesto.getCodigo());
+            }
         }
+
         repuesto.setActivo(true);
         if (repuesto.getStockActual() == null) {
             repuesto.setStockActual(0);
@@ -39,14 +34,79 @@ public class RepuestoService {
         return repuestoRepository.save(repuesto);
     }
 
+    /**
+     * Genera un código automático para un repuesto basado en su categoría
+     * Formato: PREFIJO-NNN (ej: ELEC-001, MECAN-015)
+     */
+    public String generarCodigoPorCategoria(Long idCategoria) {
+        // Obtener todos los repuestos de esta categoría
+        List<Repuesto> repuestosCategoria = repuestoRepository.findByCategoriaIdCategoria(idCategoria);
+
+        // Obtener el prefijo de la categoría
+        Repuesto primerRepuesto = repuestosCategoria.isEmpty() ? null : repuestosCategoria.get(0);
+        String prefijo = (primerRepuesto != null && primerRepuesto.getCategoria() != null && primerRepuesto.getCategoria().getPrefijo() != null)
+                ? primerRepuesto.getCategoria().getPrefijo()
+                : "REP";
+
+        // Buscar el siguiente número disponible
+        int maxNumero = 0;
+        for (Repuesto r : repuestosCategoria) {
+            if (r.getCodigo() != null && r.getCodigo().startsWith(prefijo + "-")) {
+                try {
+                    String numeroStr = r.getCodigo().substring(prefijo.length() + 1);
+                    int numero = Integer.parseInt(numeroStr);
+                    if (numero > maxNumero) {
+                        maxNumero = numero;
+                    }
+                } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
+                    // Ignorar códigos con formato no estándar
+                }
+            }
+        }
+
+        int siguienteNumero = maxNumero + 1;
+        return String.format("%s-%03d", prefijo, siguienteNumero);
+    }
+
+    /**
+     * Genera un código automático para un repuesto sin categoría
+     * Formato: REP-NNN (ej: REP-001, REP-015)
+     */
+    public String generarCodigoAutomatico() {
+        String prefijo = "REP";
+
+        // Obtener todos los repuestos
+        List<Repuesto> todosRepuestos = repuestoRepository.findAll();
+
+        // Buscar el siguiente número disponible
+        int maxNumero = 0;
+        for (Repuesto r : todosRepuestos) {
+            if (r.getCodigo() != null && r.getCodigo().startsWith(prefijo + "-")) {
+                try {
+                    String numeroStr = r.getCodigo().substring(prefijo.length() + 1);
+                    int numero = Integer.parseInt(numeroStr);
+                    if (numero > maxNumero) {
+                        maxNumero = numero;
+                    }
+                } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
+                    // Ignorar códigos con formato no estándar
+                }
+            }
+        }
+
+        int siguienteNumero = maxNumero + 1;
+        return String.format("%s-%03d", prefijo, siguienteNumero);
+    }
+
     public Repuesto actualizar(Long id, Repuesto repuestoActualizado) {
         Repuesto repuesto = repuestoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Repuesto no encontrado"));
 
         // Validar código único si se está modificando
-        if (!repuestoActualizado.getCodigo().equals(repuesto.getCodigo()) &&
-            repuestoRepository.existsByCodigo(repuestoActualizado.getCodigo())) {
-            throw new IllegalArgumentException("Ya existe un repuesto con el código: " + repuestoActualizado.getCodigo());
+        if (!repuestoActualizado.getCodigo().equals(repuesto.getCodigo())) {
+            if (repuestoRepository.existsByCodigoAndIdRepuestoNot(repuestoActualizado.getCodigo(), id)) {
+                throw new IllegalArgumentException("Ya existe un repuesto con el código: " + repuestoActualizado.getCodigo());
+            }
         }
 
         repuesto.setCodigo(repuestoActualizado.getCodigo());
@@ -56,11 +116,15 @@ public class RepuestoService {
         repuesto.setModelo(repuestoActualizado.getModelo());
         repuesto.setCategoria(repuestoActualizado.getCategoria());
         repuesto.setUnidadMedida(repuestoActualizado.getUnidadMedida());
-        repuesto.setPrecioCompra(repuestoActualizado.getPrecioCompra());
+        repuesto.setPrecioCosto(repuestoActualizado.getPrecioCosto());
         repuesto.setPrecioVenta(repuestoActualizado.getPrecioVenta());
         repuesto.setStockMinimo(repuestoActualizado.getStockMinimo());
         repuesto.setStockMaximo(repuestoActualizado.getStockMaximo());
+        repuesto.setPuntoReorden(repuestoActualizado.getPuntoReorden());
         repuesto.setUbicacion(repuestoActualizado.getUbicacion());
+        repuesto.setProveedor(repuestoActualizado.getProveedor());
+        repuesto.setTelefonoProveedor(repuestoActualizado.getTelefonoProveedor());
+        repuesto.setActivo(repuestoActualizado.getActivo());
 
         return repuestoRepository.save(repuesto);
     }
@@ -93,8 +157,8 @@ public class RepuestoService {
     }
 
     @Transactional(readOnly = true)
-    public List<Repuesto> listarPorCategoria(String categoria) {
-        return repuestoRepository.findByCategoria(categoria);
+    public List<Repuesto> listarPorCategoria(Long idCategoria) {
+        return repuestoRepository.findByCategoriaIdCategoria(idCategoria);
     }
 
     @Transactional(readOnly = true)

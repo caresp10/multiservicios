@@ -47,7 +47,7 @@
                                 <input type="text" class="form-control" id="searchInput"
                                        placeholder="Buscar por número o cliente...">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <select class="form-select" id="filterEstado">
                                     <option value="">Todos los estados</option>
                                     <option value="NUEVO">Nuevo</option>
@@ -56,13 +56,19 @@
                                     <option value="CANCELADO">Cancelado</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <select class="form-select" id="filterPrioridad">
                                     <option value="">Todas las prioridades</option>
                                     <option value="BAJA">Baja</option>
                                     <option value="MEDIA">Media</option>
                                     <option value="ALTA">Alta</option>
                                 </select>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="date" class="form-control" id="filterFechaDesde" title="Fecha desde">
+                            </div>
+                            <div class="col-md-2">
+                                <input type="date" class="form-control" id="filterFechaHasta" title="Fecha hasta">
                             </div>
                             <div class="col-md-2">
                                 <button class="btn btn-primary w-100" onclick="openModalPedido()">

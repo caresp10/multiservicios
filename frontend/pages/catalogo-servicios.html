@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo de Servicios - Sistema Multiservicios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- El sidebar se carga dinámicamente desde components/sidebar.html -->
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <nav class="top-navbar">
+                <div>
+                    <button class="btn btn-link d-md-none" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+                    <h5 class="d-inline ms-2">Catálogo de Servicios</h5>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar"></div>
+                    <div>
+                        <strong id="userName"></strong><br>
+                        <small class="text-muted" id="userRole"></small>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="content-area">
+                <div class="page-header">
+                    <h1><i class="fas fa-list-alt"></i> Catálogo de Servicios</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="dashboard.html">Dashboard</a></li>
+                            <li class="breadcrumb-item active">Catálogo de Servicios</li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <!-- Filtros -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <input type="text" class="form-control" id="searchInput"
+                                       placeholder="Buscar por código o nombre...">
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="filterCategoria">
+                                    <option value="">Todas las categorías</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="filterEstado">
+                                    <option value="">Todos los estados</option>
+                                    <option value="true">Activos</option>
+                                    <option value="false">Inactivos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-primary w-100" onclick="openModalServicio()">
+                                    <i class="fas fa-plus"></i> Nuevo Servicio
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Servicios -->
+                <div class="table-card fade-in">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nombre</th>
+                                    <th>Categoría</th>
+                                    <th>Precio Base</th>
+                                    <th>Unidad</th>
+                                    <th>Tiempo Est. (hrs)</th>
+                                    <th>Inc. Materiales</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="serviciosTable">
+                                <tr>
+                                    <td colspan="9" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Servicio -->
+    <div class="modal fade" id="modalServicio" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">
+                        <i class="fas fa-list-alt"></i> <span id="modalTitleText">Nuevo Servicio</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formServicio">
+                        <input type="hidden" id="idServicio">
+
+                        <div class="row">
+                            <!-- Código -->
+                            <div class="col-md-4 mb-3">
+                                <label for="codigo" class="form-label">
+                                    Código <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="codigo"
+                                       placeholder="Se genera automáticamente" readonly>
+                                <small class="text-muted">Se genera automáticamente según categoría</small>
+                            </div>
+
+                            <!-- Nombre -->
+                            <div class="col-md-8 mb-3">
+                                <label for="nombre" class="form-label">
+                                    Nombre del Servicio <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="nombre"
+                                       placeholder="Ej: Instalación de toma corriente" required>
+                            </div>
+                        </div>
+
+                        <!-- Descripción -->
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label">Descripción</label>
+                            <textarea class="form-control" id="descripcion" rows="3"
+                                      placeholder="Descripción detallada del servicio"></textarea>
+                        </div>
+
+                        <div class="row">
+                            <!-- Categoría -->
+                            <div class="col-md-6 mb-3">
+                                <label for="idCategoria" class="form-label">
+                                    Categoría <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="idCategoria" required>
+                                    <option value="">Seleccione una categoría</option>
+                                </select>
+                            </div>
+
+                            <!-- Unidad de Medida -->
+                            <div class="col-md-6 mb-3">
+                                <label for="unidadMedida" class="form-label">
+                                    Unidad de Medida <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="unidadMedida" required>
+                                    <option value="SERVICIO">Servicio</option>
+                                    <option value="UNIDAD">Unidad</option>
+                                    <option value="HORA">Hora</option>
+                                    <option value="METRO">Metro</option>
+                                    <option value="METRO_CUADRADO">Metro Cuadrado</option>
+                                    <option value="DIA">Día</option>
+                                    <option value="VISITA">Visita</option>
+                                    <option value="KILO">Kilo</option>
+                                    <option value="LITRO">Litro</option>
+                                    <option value="CAJA">Caja</option>
+                                    <option value="ROLLO">Rollo</option>
+                                    <option value="PAR">Par</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Precio Base -->
+                            <div class="col-md-4 mb-3">
+                                <label for="precioBase" class="form-label">
+                                    Precio Base (Gs.) <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="precioBase"
+                                       min="0" step="1000" placeholder="0" required>
+                            </div>
+
+                            <!-- Tiempo Estimado -->
+                            <div class="col-md-4 mb-3">
+                                <label for="tiempoEstimadoHoras" class="form-label">
+                                    Tiempo Estimado (hrs)
+                                </label>
+                                <input type="number" class="form-control" id="tiempoEstimadoHoras"
+                                       min="0" step="0.5" placeholder="0.0">
+                            </div>
+
+                            <!-- Incluye Materiales -->
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label d-block">Incluye Materiales</label>
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" type="checkbox"
+                                           id="incluye_materiales">
+                                    <label class="form-check-label" for="incluye_materiales">
+                                        Sí, incluye materiales
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notas Adicionales -->
+                        <div class="mb-3">
+                            <label for="notasAdicionales" class="form-label">Notas Adicionales</label>
+                            <textarea class="form-control" id="notasAdicionales" rows="2"
+                                      placeholder="Notas, advertencias o información adicional"></textarea>
+                        </div>
+
+                        <!-- Estado (solo visible en edición) -->
+                        <div class="mb-3" id="estadoContainer" style="display: none;">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="activo" checked>
+                                <label class="form-check-label" for="activo">
+                                    <strong>Servicio Activo</strong>
+                                    <br><small class="text-muted">Los servicios inactivos no aparecerán en los presupuestos</small>
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="guardarServicio()">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Histórico de Precios -->
+    <div class="modal fade" id="modalHistorico" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-history"></i> Histórico de Precios
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6 id="historicoServicioNombre" class="mb-3"></h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Precio Anterior</th>
+                                    <th>Precio Nuevo</th>
+                                    <th>Cambio</th>
+                                    <th>Usuario</th>
+                                    <th>Motivo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historicoTable">
+                                <tr>
+                                    <td colspan="6" class="text-center">
+                                        <div class="spinner-border spinner-border-sm" role="status"></div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script src="../js/catalogo-servicios.js"></script>
+</body>
+</html>

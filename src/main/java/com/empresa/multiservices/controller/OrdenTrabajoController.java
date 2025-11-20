@@ -104,7 +104,8 @@ public class OrdenTrabajoController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
     public ResponseEntity<ApiResponse> eliminar(@PathVariable Long id) {
-        otService.eliminar(id);
-        return ResponseEntity.ok(ApiResponse.success("Orden de trabajo eliminada exitosamente", null));
+        // Las órdenes de trabajo no se pueden eliminar por regla de negocio
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Las órdenes de trabajo no se pueden eliminar. Forman parte del historial del pedido."));
     }
 }

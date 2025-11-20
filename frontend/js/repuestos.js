@@ -13,23 +13,55 @@ document.addEventListener('DOMContentLoaded', function() {
     cargarCategorias();
     cargarRepuestos();
     setupBusqueda();
-
-    // Cargar categorías desde el backend y poblar el select
-    async function cargarCategorias() {
-        try {
-            const data = await ApiService.get('/categorias');
-            if (data.success) {
-                const select = document.getElementById('categoria');
-                select.innerHTML = '<option value="">Seleccione una categoría</option>';
-                data.data.forEach(cat => {
-                    select.innerHTML += `<option value="${cat.nombre}">${cat.nombre}</option>`;
-                });
-            }
-        } catch (error) {
-            console.error('Error cargando categorías:', error);
-        }
-    }
+    setupCategoriaListener();
 });
+
+// Cargar categorías desde el backend y poblar el select
+async function cargarCategorias() {
+    try {
+        const data = await ApiService.get('/categorias');
+        if (data.success) {
+            const select = document.getElementById('categoria');
+            select.innerHTML = '<option value="">Seleccione una categoría</option>';
+            data.data.forEach(cat => {
+                select.innerHTML += `<option value="${cat.idCategoria}" data-nombre="${cat.nombre}">${cat.nombre}</option>`;
+            });
+        }
+    } catch (error) {
+        console.error('Error cargando categorías:', error);
+    }
+}
+
+// Configurar listener de categoría para generar código automático
+function setupCategoriaListener() {
+    const select = document.getElementById('categoria');
+    if (select) {
+        select.addEventListener('change', async function() {
+            const idCategoria = this.value;
+            console.log('Categoría seleccionada:', idCategoria, 'Editando:', repuestoEditando);
+
+            if (idCategoria && !repuestoEditando) {
+                try {
+                    console.log('Llamando a /repuestos/generar-codigo/' + idCategoria);
+                    const response = await ApiService.get(`/repuestos/generar-codigo/${idCategoria}`);
+                    console.log('Respuesta del servidor:', response);
+
+                    if (response.success && response.data) {
+                        document.getElementById('codigo').value = response.data;
+                        console.log('Código generado:', response.data);
+                    } else {
+                        console.error('Error en respuesta:', response.message);
+                    }
+                } catch (error) {
+                    console.error('Error generando código:', error);
+                }
+            }
+        });
+        console.log('Listener de categoría configurado');
+    } else {
+        console.error('No se encontró el select de categoría');
+    }
+}
 
 // Cargar repuestos
 async function cargarRepuestos() {
@@ -79,8 +111,8 @@ function renderizarRepuestos(lista) {
             <td><strong>${repuesto.codigo}</strong></td>
             <td>${repuesto.nombre}</td>
             <td>${repuesto.marca || '-'}</td>
-            <td>${repuesto.categoria || '-'}</td>
-            <td>${formatearMoneda(repuesto.precioCompra)}</td>
+            <td>${repuesto.categoria?.nombre || '-'}</td>
+            <td>${formatearMoneda(repuesto.precioCosto)}</td>
             <td>${formatearMoneda(repuesto.precioVenta)}</td>
             <td>
                 ${repuesto.stockActual} ${stockBadge}
@@ -110,7 +142,7 @@ function renderizarRepuestos(lista) {
 }
 
 // Abrir modal nuevo repuesto
-function openModalRepuesto() {
+async function openModalRepuesto() {
     repuestoEditando = null;
     document.getElementById('modalRepuestoTitle').innerHTML = '<i class="fas fa-cogs"></i> Nuevo Repuesto';
     document.getElementById('repuestoForm').reset();
@@ -119,15 +151,12 @@ function openModalRepuesto() {
     // Solo asignar si el campo existe
     const precioVentaInput = document.getElementById('precioVenta');
     if (precioVentaInput) precioVentaInput.value = 0;
-    // Generar código automático
-    const fecha = new Date();
-    const yyyy = fecha.getFullYear();
-    const mm = String(fecha.getMonth() + 1).padStart(2, '0');
-    const dd = String(fecha.getDate()).padStart(2, '0');
-    const secuencia = (repuestos.length + 1).toString().padStart(4, '0');
-    const codigoAuto = `R${yyyy}${mm}${dd}-${secuencia}`;
-    document.getElementById('codigo').value = codigoAuto;
+
+    // Limpiar código y hacerlo readonly
+    document.getElementById('codigo').value = '';
     document.getElementById('codigo').readOnly = true;
+    document.getElementById('codigo').placeholder = 'Seleccione una categoría para generar el código';
+
     modalRepuesto.show();
 }
 
@@ -140,11 +169,13 @@ async function editarRepuesto(id) {
             document.getElementById('modalRepuestoTitle').innerHTML = '<i class="fas fa-edit"></i> Editar Repuesto';
             document.getElementById('repuestoId').value = repuestoEditando.idRepuesto;
             document.getElementById('codigo').value = repuestoEditando.codigo;
+            document.getElementById('codigo').readOnly = true;
             document.getElementById('nombre').value = repuestoEditando.nombre;
             document.getElementById('descripcion').value = repuestoEditando.descripcion || '';
             document.getElementById('marca').value = repuestoEditando.marca || '';
             document.getElementById('modelo').value = repuestoEditando.modelo || '';
-            document.getElementById('categoria').value = repuestoEditando.categoria || '';
+            // Establecer categoría por ID
+            document.getElementById('categoria').value = repuestoEditando.categoria?.idCategoria || '';
             document.getElementById('unidadMedida').value = repuestoEditando.unidadMedida || 'Unidad';
             document.getElementById('ubicacion').value = repuestoEditando.ubicacion || '';
             const precioVentaInput = document.getElementById('precioVenta');
@@ -169,13 +200,15 @@ async function guardarRepuesto() {
         return;
     }
 
+    const idCategoria = document.getElementById('categoria').value;
+
     const repuesto = {
         codigo: document.getElementById('codigo').value.trim(),
         nombre: document.getElementById('nombre').value.trim(),
         descripcion: document.getElementById('descripcion').value.trim() || null,
         marca: document.getElementById('marca').value.trim() || null,
         modelo: document.getElementById('modelo').value.trim() || null,
-        categoria: document.getElementById('categoria').value,
+        categoria: idCategoria ? { idCategoria: parseInt(idCategoria) } : null,
         unidadMedida: document.getElementById('unidadMedida').value,
         ubicacion: document.getElementById('ubicacion').value.trim() || null,
         precioVenta: parseFloat(document.getElementById('precioVenta').value) || 0,

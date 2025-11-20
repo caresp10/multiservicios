@@ -110,6 +110,30 @@
                 </div>
             </div>
         </div>
+        <!-- Modal Vista Factura -->
+        <div class="modal fade" id="modalVistaFactura" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-file-invoice"></i> Vista de Factura</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="vistaFacturaBody">
+                        <!-- Aquí se renderiza la factura -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-success" id="btnExportarPDF"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal Generar Factura desde OT -->
@@ -254,33 +278,140 @@
                                         <!-- Repuestos y Costos Adicionales para Facturar -->
                                         <div class="card mb-3">
                                             <div class="card-header bg-success bg-opacity-10">
-                                                <h6 class="mb-0"><i class="fas fa-plus-circle"></i> Agregar Repuestos y Costos Adicionales para Facturar</h6>
+                                                <h6 class="mb-0"><i class="fas fa-plus-circle"></i> Agregar Items para Facturar</h6>
                                             </div>
                                             <div class="card-body">
-                                                <div class="row mb-3">
-                                                    <div class="col-md-5">
-                                                        <label class="form-label">Descripción *</label>
-                                                        <input type="text" class="form-control" id="nuevoItemDesc" placeholder="Ej: Repuesto ABC">
-                                                    </div>
-                                                    <div class="col-md-2">
-                                                        <label class="form-label">Cantidad *</label>
-                                                        <input type="number" class="form-control" id="nuevoItemCant" value="1" min="0.01" step="0.01">
-                                                    </div>
-                                                    <div class="col-md-3">
-                                                        <label class="form-label">Precio Unitario *</label>
-                                                        <input type="number" class="form-control" id="nuevoItemPrecio" placeholder="0" min="0" step="0.01">
-                                                    </div>
-                                                    <div class="col-md-2">
-                                                        <label class="form-label">&nbsp;</label>
-                                                        <button type="button" class="btn btn-success w-100" onclick="agregarItemFactura()">
-                                                            <i class="fas fa-plus"></i> Agregar
+                                                <!-- Tabs para selección de tipo de item -->
+                                                <ul class="nav nav-tabs mb-3" id="itemTabsFactura" role="tablist">
+                                                    <li class="nav-item" role="presentation">
+                                                        <button class="nav-link active" id="servicios-tab-factura" data-bs-toggle="tab"
+                                                                data-bs-target="#servicios-panel-factura" type="button" role="tab">
+                                                            <i class="fas fa-concierge-bell"></i> Servicios
                                                         </button>
+                                                    </li>
+                                                    <li class="nav-item" role="presentation">
+                                                        <button class="nav-link" id="repuestos-tab-factura" data-bs-toggle="tab"
+                                                                data-bs-target="#repuestos-panel-factura" type="button" role="tab">
+                                                            <i class="fas fa-cogs"></i> Repuestos
+                                                        </button>
+                                                    </li>
+                                                    <li class="nav-item" role="presentation">
+                                                        <button class="nav-link" id="manual-tab-factura" data-bs-toggle="tab"
+                                                                data-bs-target="#manual-panel-factura" type="button" role="tab">
+                                                            <i class="fas fa-keyboard"></i> Manual
+                                                        </button>
+                                                    </li>
+                                                </ul>
+
+                                                <!-- Tab Content -->
+                                                <div class="tab-content" id="itemTabsContentFactura">
+                                                    <!-- Panel Servicios -->
+                                                    <div class="tab-pane fade show active" id="servicios-panel-factura" role="tabpanel">
+                                                        <div class="row g-2 align-items-end mb-3">
+                                                            <div class="col-md-4">
+                                                                <label for="selectServicioFactura" class="form-label small">Servicio</label>
+                                                                <select class="form-select" id="selectServicioFactura" onchange="seleccionarServicioFactura()">
+                                                                    <option value="">Seleccione un servicio...</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <label for="servicioCantidadFactura" class="form-label small">Cantidad</label>
+                                                                <input type="number" class="form-control" id="servicioCantidadFactura"
+                                                                       step="0.01" min="0.01" value="1" placeholder="1">
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <label for="servicioPrecioFactura" class="form-label small">Precio</label>
+                                                                <input type="number" class="form-control" id="servicioPrecioFactura"
+                                                                       step="0.01" min="0" placeholder="0.00" readonly>
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <button type="button" class="btn btn-primary w-100" onclick="agregarServicioFactura()">
+                                                                    <i class="fas fa-plus"></i> Agregar
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div class="mt-2" id="servicioInfoFactura" style="display: none;">
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-info-circle"></i>
+                                                                <span id="servicioDescripcionTextFactura"></span>
+                                                            </small>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Panel Repuestos -->
+                                                    <div class="tab-pane fade" id="repuestos-panel-factura" role="tabpanel">
+                                                        <div class="row g-2 align-items-end mb-3">
+                                                            <div class="col-md-4">
+                                                                <label for="selectRepuestoFactura" class="form-label small">Repuesto</label>
+                                                                <select class="form-select" id="selectRepuestoFactura" onchange="seleccionarRepuestoFactura()">
+                                                                    <option value="">Seleccione un repuesto...</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <label for="repuestoCantidadFactura" class="form-label small">Cantidad</label>
+                                                                <input type="number" class="form-control" id="repuestoCantidadFactura"
+                                                                       step="1" min="1" value="1" placeholder="1">
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <label for="repuestoStockFactura" class="form-label small">Stock Disp.</label>
+                                                                <input type="text" class="form-control" id="repuestoStockFactura"
+                                                                       placeholder="-" readonly>
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <label for="repuestoPrecioFactura" class="form-label small">Precio</label>
+                                                                <input type="number" class="form-control" id="repuestoPrecioFactura"
+                                                                       step="0.01" min="0" placeholder="0.00" readonly>
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <button type="button" class="btn btn-info w-100" onclick="agregarRepuestoFactura()">
+                                                                    <i class="fas fa-plus"></i> Agregar
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div class="mt-2" id="repuestoInfoFactura" style="display: none;">
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-info-circle"></i>
+                                                                <span id="repuestoDescripcionTextFactura"></span>
+                                                            </small>
+                                                        </div>
+                                                        <div class="mt-2" id="repuestoAlertaFactura" style="display: none;">
+                                                            <small class="text-danger">
+                                                                <i class="fas fa-exclamation-triangle"></i>
+                                                                <span id="repuestoAlertaTextFactura"></span>
+                                                            </small>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Panel Manual -->
+                                                    <div class="tab-pane fade" id="manual-panel-factura" role="tabpanel">
+                                                        <div class="row g-2 align-items-end mb-3">
+                                                            <div class="col-md-5">
+                                                                <label class="form-label small">Descripción *</label>
+                                                                <input type="text" class="form-control" id="nuevoItemDesc" placeholder="Ej: Repuesto ABC">
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <label class="form-label small">Cantidad *</label>
+                                                                <input type="number" class="form-control" id="nuevoItemCant" value="1" min="0.01" step="0.01">
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <label class="form-label small">Precio Unitario *</label>
+                                                                <input type="number" class="form-control" id="nuevoItemPrecio" placeholder="0" min="0" step="0.01">
+                                                            </div>
+                                                            <div class="col-md-2">
+                                                                <button type="button" class="btn btn-success w-100" onclick="agregarItemFactura()">
+                                                                    <i class="fas fa-plus"></i> Agregar
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
+
+                                                <!-- Tabla de Items Agregados -->
                                                 <div class="table-responsive">
                                                     <table class="table table-sm table-bordered">
                                                         <thead class="table-light">
                                                             <tr>
+                                                                <th>Tipo</th>
                                                                 <th>Descripción</th>
                                                                 <th class="text-end">Cant.</th>
                                                                 <th class="text-end">P. Unit.</th>
@@ -290,7 +421,7 @@
                                                         </thead>
                                                         <tbody id="detItemsAdicionales">
                                                             <tr>
-                                                                <td colspan="5" class="text-center text-muted">No hay items adicionales agregados</td>
+                                                                <td colspan="6" class="text-center text-muted">No hay items adicionales agregados</td>
                                                             </tr>
                                                         </tbody>
                                                     </table>
@@ -338,6 +469,13 @@
                                                                 <option value="PAGADA">Pagada</option>
                                                             </select>
                                                         </div>
+                                                        <div class="mb-2">
+                                                            <label class="form-label">Timbrado *</label>
+                                                            <select class="form-select form-select-sm" id="timbrado" required>
+                                                                <option value="">Seleccione timbrado...</option>
+                                                            </select>
+                                                            <small class="text-muted" id="infoTimbrado"></small>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -353,15 +491,11 @@
                                             <div class="collapse" id="collapseAdicional">
                                                 <div class="card-body">
                                                     <div class="row">
-                                                        <div class="col-md-4 mb-2">
-                                                            <label class="form-label">Timbrado</label>
-                                                            <input type="text" class="form-control form-control-sm" id="timbrado" maxlength="20">
-                                                        </div>
-                                                        <div class="col-md-4 mb-2">
+                                                        <div class="col-md-6 mb-2">
                                                             <label class="form-label">Fecha Vencimiento</label>
                                                             <input type="date" class="form-control form-control-sm" id="fechaVencimiento">
                                                         </div>
-                                                        <div class="col-md-4 mb-2">
+                                                        <div class="col-md-6 mb-2">
                                                             <label class="form-label">Descuento</label>
                                                             <input type="number" class="form-control form-control-sm" id="descuento" value="0" min="0" step="0.01">
                                                         </div>
@@ -385,6 +519,252 @@
                     </button>
                     <button type="button" class="btn btn-primary btn-lg" id="btnGenerarFactura" onclick="guardarFactura()" style="display: none;">
                         <i class="fas fa-file-invoice"></i> Generar Factura
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ver Detalles de Factura -->
+    <div class="modal fade" id="modalDetallesFactura" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-invoice"></i> Detalles de la Factura
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Información General -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-info-circle"></i> Información General</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Nº Factura:</strong> <span id="verNumeroFactura"></span></p>
+                                    <p><strong>Fecha Emisión:</strong> <span id="verFechaEmision"></span></p>
+                                    <p><strong>Estado:</strong> <span id="verEstado"></span></p>
+                                    <p><strong>Forma de Pago:</strong> <span id="verFormaPago"></span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Timbrado:</strong> <span id="verTimbrado"></span></p>
+                                    <p><strong>Fecha Vencimiento:</strong> <span id="verFechaVencimiento"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Datos del Cliente -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-user"></i> Cliente</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Nombre:</strong> <span id="verCliente"></span></p>
+                                    <p><strong>Documento:</strong> <span id="verDocumento"></span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Dirección:</strong> <span id="verDireccionCliente"></span></p>
+                                    <p><strong>Teléfono:</strong> <span id="verTelefonoCliente"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Items de la Factura -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-list"></i> Items</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Descripción</th>
+                                            <th class="text-end">Cantidad</th>
+                                            <th class="text-end">Precio Unit.</th>
+                                            <th class="text-end">Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="verItemsFactura">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Totales -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-calculator"></i> Totales</h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm mb-0">
+                                <tr>
+                                    <td class="text-end"><strong>Subtotal:</strong></td>
+                                    <td class="text-end" id="verSubtotal"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-end"><strong>Descuento:</strong></td>
+                                    <td class="text-end" id="verDescuento"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-end"><strong>IVA (10%):</strong></td>
+                                    <td class="text-end" id="verIva"></td>
+                                </tr>
+                                <tr class="table-primary">
+                                    <td class="text-end"><h5 class="mb-0">TOTAL:</h5></td>
+                                    <td class="text-end"><h5 class="mb-0" id="verTotal"></h5></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Observaciones -->
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-comment"></i> Observaciones</h6>
+                        </div>
+                        <div class="card-body">
+                            <p id="verObservaciones" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="btnEditarFactura">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Factura -->
+    <div class="modal fade" id="modalEditarFactura" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">
+                        <i class="fas fa-edit"></i> Editar Factura
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editIdFactura">
+
+                    <div class="mb-3">
+                        <label class="form-label">Número de Factura</label>
+                        <input type="text" class="form-control" id="editNumeroFactura" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><i class="fas fa-credit-card"></i> Forma de Pago</label>
+                        <select class="form-select" id="editFormaPago" required>
+                            <option value="">Seleccione...</option>
+                            <option value="EFECTIVO">Efectivo</option>
+                            <option value="TARJETA">Tarjeta</option>
+                            <option value="TRANSFERENCIA">Transferencia</option>
+                            <option value="CHEQUE">Cheque</option>
+                            <option value="CREDITO">Crédito</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><i class="fas fa-tag"></i> Estado</label>
+                        <select class="form-select" id="editEstado" required>
+                            <option value="">Seleccione...</option>
+                            <option value="PENDIENTE">Pendiente</option>
+                            <option value="PAGADA">Pagada</option>
+                            <option value="VENCIDA">Vencida</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Timbrado *</label>
+                        <select class="form-select" id="editTimbrado" required>
+                            <option value="">Seleccione timbrado...</option>
+                        </select>
+                        <small class="text-muted" id="editInfoTimbrado"></small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de Vencimiento</label>
+                        <input type="date" class="form-control" id="editFechaVencimiento">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="editObservaciones" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="guardarEdicionFactura()">
+                        <i class="fas fa-save"></i> Guardar Cambios
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Anular Factura -->
+    <div class="modal fade" id="modalAnularFactura" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-ban"></i> Anular Factura
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="anularIdFactura">
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Advertencia:</strong> Esta acción NO se puede deshacer. La factura será marcada como ANULADA.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Número de Factura</label>
+                        <input type="text" class="form-control" id="anularNumeroFactura" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><span class="text-danger">*</span> Motivo de Anulación</label>
+                        <select class="form-select" id="anularMotivo" required>
+                            <option value="">Seleccione un motivo...</option>
+                            <option value="ERROR_FACTURACION">Error en la facturación</option>
+                            <option value="CANCELACION_CLIENTE">Cancelación por parte del cliente</option>
+                            <option value="DUPLICADO">Factura duplicada</option>
+                            <option value="DEVOLUCION">Devolución de productos/servicios</option>
+                            <option value="OTRO">Otro motivo</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="anularDetalleMotivo" style="display: none;">
+                        <label class="form-label"><span class="text-danger">*</span> Detalle del Motivo</label>
+                        <textarea class="form-control" id="anularDetalleTexto" rows="3"
+                                  placeholder="Describa el motivo de anulación..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="confirmarAnularFactura()">
+                        <i class="fas fa-ban"></i> Anular Factura
                     </button>
                 </div>
             </div>
