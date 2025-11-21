@@ -90,8 +90,11 @@
                                 <button class="btn btn-primary w-100 mb-2" onclick="openModalRepuesto()">
                                     <i class="fas fa-plus"></i> Nuevo Repuesto
                                 </button>
-                                <button class="btn btn-warning w-100" onclick="verStockBajo()">
+                                <button class="btn btn-warning w-100 mb-2" onclick="verStockBajo()">
                                     <i class="fas fa-exclamation-triangle"></i> Ver Stock Bajo
+                                </button>
+                                <button class="btn btn-info w-100" onclick="openModalAjusteInventario()">
+                                    <i class="fas fa-balance-scale"></i> Ajuste Inventario
                                 </button>
                             </div>
                         </div>
@@ -254,11 +257,12 @@
                                        readonly style="background-color: #e9ecef;">
                             </div>
 
-                            <!-- Stock Actual -->
+                            <!-- Stock Actual (solo lectura - se maneja via compras/ajustes) -->
                             <div class="col-md-2 mb-3">
                                 <label for="stockActual" class="form-label">Stock Actual</label>
                                 <input type="number" class="form-control" id="stockActual"
-                                       min="0" value="0">
+                                       min="0" value="0" readonly style="background-color: #e9ecef;">
+                                <small class="text-muted">Vía compras/ajustes</small>
                             </div>
 
                             <!-- Stock Mínimo -->
@@ -284,12 +288,13 @@
                                        min="0">
                             </div>
 
-                            <!-- Proveedor -->
+                            <!-- Proveedor Principal (referencia, el stock viene de lotes) -->
                             <div class="col-md-8 mb-3">
-                                <label for="idProveedor" class="form-label">Proveedor</label>
+                                <label for="idProveedor" class="form-label">Proveedor Principal</label>
                                 <select class="form-select" id="idProveedor">
                                     <option value="">Seleccione proveedor</option>
                                 </select>
+                                <small class="text-muted">Referencia - cada lote tiene su proveedor</small>
                             </div>
                         </div>
 
@@ -310,6 +315,103 @@
                     </button>
                     <button type="button" class="btn btn-primary" onclick="guardarRepuesto()">
                         <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ajuste de Inventario -->
+    <div class="modal fade" id="modalAjusteInventario" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-balance-scale"></i> Ajuste de Inventario
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Use este formulario para ajustes manuales de inventario (inventario inicial, donaciones, pérdidas, correcciones).
+                        Para compras formales use el módulo de Compras.
+                    </div>
+                    <form id="formAjusteInventario">
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="ajusteRepuesto" class="form-label">
+                                    Repuesto <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="ajusteRepuesto" required>
+                                    <option value="">Seleccione repuesto</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Stock Actual</label>
+                                <input type="text" class="form-control" id="ajusteStockActual" readonly
+                                       style="background-color: #e9ecef;">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="ajusteTipoMovimiento" class="form-label">
+                                    Tipo de Ajuste <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="ajusteTipoMovimiento" required>
+                                    <option value="ENTRADA">Entrada (Aumentar stock)</option>
+                                    <option value="SALIDA">Salida (Disminuir stock)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="ajusteCantidad" class="form-label">
+                                    Cantidad <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="ajusteCantidad"
+                                       min="1" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="ajusteProveedor" class="form-label">Proveedor</label>
+                                <select class="form-select" id="ajusteProveedor">
+                                    <option value="">Sin proveedor (ajuste interno)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="ajusteMotivo" class="form-label">
+                                    Motivo <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="ajusteMotivo" required>
+                                    <option value="AJUSTE_INVENTARIO">Ajuste de inventario</option>
+                                    <option value="INVENTARIO_INICIAL">Inventario inicial</option>
+                                    <option value="DONACION">Donación recibida</option>
+                                    <option value="PERDIDA">Pérdida/Robo</option>
+                                    <option value="DETERIORO">Deterioro/Vencimiento</option>
+                                    <option value="TRANSFERENCIA">Transferencia entre sucursales</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="ajustePrecioCosto" class="form-label">
+                                    Precio Costo Unitario (Gs.)
+                                </label>
+                                <input type="number" class="form-control" id="ajustePrecioCosto"
+                                       min="0" step="100" placeholder="Opcional para entradas">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="ajusteObservaciones" class="form-label">Observaciones</label>
+                            <textarea class="form-control" id="ajusteObservaciones" rows="2"
+                                      placeholder="Detalles adicionales del ajuste..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-info" onclick="realizarAjusteInventario()">
+                        <i class="fas fa-check"></i> Realizar Ajuste
                     </button>
                 </div>
             </div>

@@ -28,6 +28,7 @@ public class FacturaService {
     private final MovimientoStockRepository movimientoStockRepository;
     private final ServicioCatalogoRepository servicioCatalogoRepository;
     private final TimbradoService timbradoService;
+    private final LoteRepuestoService loteRepuestoService;
 
     @Transactional(readOnly = true)
     public List<Factura> listarTodas() {
@@ -245,14 +246,14 @@ public class FacturaService {
 
     /**
      * Procesa la devolución de stock al anular una factura
-     * Incrementa el stock de los repuestos que fueron descontados y registra movimientos
+     * Devuelve el stock a los lotes correspondientes
      */
     private void procesarDevolucionStock(Factura factura) {
         if (factura.getItems() == null || factura.getItems().isEmpty()) {
             return;
         }
 
-        System.out.println("PROCESANDO DEVOLUCIÓN DE STOCK");
+        System.out.println("PROCESANDO DEVOLUCIÓN DE STOCK A LOTES");
         System.out.println("Factura: " + factura.getNumeroFactura());
 
         // Obtener usuario actual (para registro de movimiento)
@@ -269,33 +270,18 @@ public class FacturaService {
                 System.out.println("Stock actual: " + repuesto.getStockActual());
                 System.out.println("Cantidad a devolver: " + cantidadADevolver);
 
-                // Guardar stock anterior
-                int stockAnterior = repuesto.getStockActual();
+                // DEVOLVER STOCK a los lotes
+                // El servicio de lotes se encarga de registrar los movimientos
+                loteRepuestoService.devolverStockALotes(
+                    repuesto.getIdRepuesto(),
+                    cantidadADevolver,
+                    "ANULACIÓN FACTURA: " + factura.getNumeroFactura(),
+                    usuario,
+                    factura
+                );
 
-                // DEVOLVER STOCK
-                repuesto.setStockActual(stockAnterior + cantidadADevolver);
-                repuestoRepository.save(repuesto);
-
-                System.out.println("✅ Stock devuelto. Nuevo stock: " + repuesto.getStockActual());
-
-                // REGISTRAR MOVIMIENTO DE STOCK (ENTRADA por anulación)
-                MovimientoStock movimiento = MovimientoStock.builder()
-                        .repuesto(repuesto)
-                        .tipoMovimiento(MovimientoStock.TipoMovimiento.ENTRADA)
-                        .cantidad(cantidadADevolver)
-                        .motivo(MovimientoStock.MotivoMovimiento.DEVOLUCION)
-                        .referencia("ANULACIÓN FACTURA: " + factura.getNumeroFactura())
-                        .stockAnterior(stockAnterior)
-                        .stockNuevo(repuesto.getStockActual())
-                        .usuario(usuario)
-                        .factura(factura)
-                        .fechaMovimiento(LocalDateTime.now())
-                        .observaciones("Devolución automática por anulación de factura")
-                        .build();
-
-                movimientoStockRepository.save(movimiento);
-
-                System.out.println("✅ Movimiento de devolución registrado (ID: " + movimiento.getIdMovimiento() + ")");
+                System.out.println("✅ Stock devuelto a lotes. Nuevo stock: " +
+                                 loteRepuestoService.obtenerStockDisponible(repuesto.getIdRepuesto()));
             }
         }
 
@@ -314,7 +300,7 @@ public class FacturaService {
     }
 
     /**
-     * Procesa el descuento automático de stock y registra movimientos para items de tipo REPUESTO
+     * Procesa el descuento automático de stock usando sistema de lotes FIFO
      * Este método se ejecuta automáticamente al crear una factura
      */
     private void procesarDescuentoStockYMovimientos(Factura factura) {
@@ -323,7 +309,7 @@ public class FacturaService {
         }
 
         System.out.println("===================================================");
-        System.out.println("PROCESANDO DESCUENTO DE STOCK Y MOVIMIENTOS");
+        System.out.println("PROCESANDO DESCUENTO DE STOCK (FIFO por lotes)");
         System.out.println("Factura: " + factura.getNumeroFactura());
         System.out.println("Total items: " + factura.getItems().size());
 
@@ -341,42 +327,27 @@ public class FacturaService {
                 System.out.println("Stock actual: " + repuesto.getStockActual());
                 System.out.println("Cantidad a descontar: " + cantidadADescontar);
 
-                // Validar que haya stock suficiente
-                if (repuesto.getStockActual() < cantidadADescontar) {
+                // Validar que haya stock suficiente en los lotes
+                if (!loteRepuestoService.hayStockSuficiente(repuesto.getIdRepuesto(), cantidadADescontar)) {
                     throw new RuntimeException(
                         "ERROR: Stock insuficiente para el repuesto '" + repuesto.getNombre() + "'. " +
-                        "Stock disponible: " + repuesto.getStockActual() + ", " +
+                        "Stock disponible: " + loteRepuestoService.obtenerStockDisponible(repuesto.getIdRepuesto()) + ", " +
                         "Cantidad requerida: " + cantidadADescontar
                     );
                 }
 
-                // Guardar stock anterior
-                int stockAnterior = repuesto.getStockActual();
+                // DESCONTAR STOCK usando FIFO desde los lotes
+                // El servicio de lotes se encarga de registrar los movimientos
+                loteRepuestoService.descontarStockFIFO(
+                    repuesto.getIdRepuesto(),
+                    cantidadADescontar,
+                    "FACTURA: " + factura.getNumeroFactura(),
+                    usuario,
+                    factura
+                );
 
-                // DESCONTAR STOCK
-                repuesto.setStockActual(stockAnterior - cantidadADescontar);
-                repuestoRepository.save(repuesto);
-
-                System.out.println("✅ Stock descontado. Nuevo stock: " + repuesto.getStockActual());
-
-                // REGISTRAR MOVIMIENTO DE STOCK
-                MovimientoStock movimiento = MovimientoStock.builder()
-                        .repuesto(repuesto)
-                        .tipoMovimiento(MovimientoStock.TipoMovimiento.SALIDA)
-                        .cantidad(cantidadADescontar)
-                        .motivo(MovimientoStock.MotivoMovimiento.VENTA)
-                        .referencia("FACTURA: " + factura.getNumeroFactura())
-                        .stockAnterior(stockAnterior)
-                        .stockNuevo(repuesto.getStockActual())
-                        .usuario(usuario)
-                        .factura(factura)
-                        .fechaMovimiento(LocalDateTime.now())
-                        .observaciones("Descuento automático por facturación")
-                        .build();
-
-                movimientoStockRepository.save(movimiento);
-
-                System.out.println("✅ Movimiento de stock registrado (ID: " + movimiento.getIdMovimiento() + ")");
+                System.out.println("✅ Stock descontado de lotes (FIFO). Nuevo stock: " +
+                                 loteRepuestoService.obtenerStockDisponible(repuesto.getIdRepuesto()));
             }
         }
 

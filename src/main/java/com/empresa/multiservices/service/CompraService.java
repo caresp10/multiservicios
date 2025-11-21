@@ -1,17 +1,18 @@
 package com.empresa.multiservices.service;
 
 import com.empresa.multiservices.exception.ResourceNotFoundException;
-import com.empresa.multiservices.model.Compra;
-import com.empresa.multiservices.model.DetalleCompra;
-import com.empresa.multiservices.model.Proveedor;
-import com.empresa.multiservices.model.Repuesto;
+import com.empresa.multiservices.model.*;
 import com.empresa.multiservices.repository.CompraRepository;
 import com.empresa.multiservices.repository.ProveedorRepository;
+import com.empresa.multiservices.repository.RepuestoRepository;
+import com.empresa.multiservices.repository.HistoricoPreciosRepuestoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -25,7 +26,13 @@ public class CompraService {
     private ProveedorRepository proveedorRepository;
 
     @Autowired
-    private RepuestoService repuestoService;
+    private RepuestoRepository repuestoRepository;
+
+    @Autowired
+    private LoteRepuestoService loteRepuestoService;
+
+    @Autowired
+    private HistoricoPreciosRepuestoRepository historicoPreciosRepository;
 
     public Compra crear(Compra compra) {
         // Validar que el número de compra sea único
@@ -65,16 +72,49 @@ public class CompraService {
         // Guardar compra
         Compra nuevaCompra = compraRepository.save(compra);
 
-        // Actualizar stock y precios de todos los repuestos automáticamente
+        // Crear lotes y actualizar precios para cada detalle
         for (DetalleCompra detalle : nuevaCompra.getDetalles()) {
-            // Incrementar stock
-            repuestoService.incrementarStock(
-                detalle.getRepuesto().getIdRepuesto(),
-                detalle.getCantidad()
-            );
+            Repuesto repuesto = detalle.getRepuesto();
 
-            // TODO: Actualizar precio de costo y registrar en histórico si cambió
-            // Este comportamiento se debe implementar en el RepuestoService
+            // Crear lote para este repuesto
+            LoteRepuesto lote = LoteRepuesto.builder()
+                    .repuesto(repuesto)
+                    .compra(nuevaCompra)
+                    .proveedor(proveedor)
+                    .cantidadInicial(detalle.getCantidad())
+                    .cantidadDisponible(detalle.getCantidad())
+                    .precioCostoUnitario(detalle.getPrecioUnitario())
+                    .fechaIngreso(LocalDateTime.now())
+                    .activo(true)
+                    .observaciones("Compra " + nuevaCompra.getNumeroCompra())
+                    .build();
+
+            loteRepuestoService.crearLote(lote);
+
+            // Verificar si el precio de costo cambió y registrar en histórico
+            BigDecimal precioAnterior = repuesto.getPrecioCosto();
+            BigDecimal precioNuevo = detalle.getPrecioUnitario();
+
+            if (precioAnterior == null || precioAnterior.compareTo(precioNuevo) != 0) {
+                // Registrar en histórico de precios
+                HistoricoPreciosRepuesto historico = new HistoricoPreciosRepuesto();
+                historico.setRepuesto(repuesto);
+                historico.setPrecioCostoAnterior(precioAnterior != null ? precioAnterior : BigDecimal.ZERO);
+                historico.setPrecioCostoNuevo(precioNuevo);
+                historico.setPrecioVentaAnterior(repuesto.getPrecioVenta());
+                historico.setPrecioVentaNuevo(repuesto.getPrecioVenta()); // Mantiene el precio de venta
+                historico.setFechaCambio(LocalDateTime.now());
+                historico.setMotivo("Compra " + nuevaCompra.getNumeroCompra() + " - Proveedor: " + proveedor.getNombre());
+
+                historicoPreciosRepository.save(historico);
+
+                // Actualizar el precio de costo del repuesto
+                repuesto.setPrecioCosto(precioNuevo);
+                repuestoRepository.save(repuesto);
+
+                System.out.println("Precio actualizado para " + repuesto.getCodigo() +
+                                 ": " + precioAnterior + " -> " + precioNuevo);
+            }
         }
 
         return nuevaCompra;
