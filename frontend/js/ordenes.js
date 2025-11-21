@@ -7,10 +7,6 @@ document.getElementById('userName').textContent = `${user.nombre} ${user.apellid
 document.getElementById('userRole').textContent = user.rol;
 document.getElementById('userAvatar').textContent = user.nombre.charAt(0);
 
-if (user.rol !== 'ADMIN') {
-    document.getElementById('menuUsuarios').style.display = 'none';
-}
-
 // Variables globales
 let ordenes = [];
 let pedidos = [];
@@ -142,11 +138,11 @@ function aplicarFiltros() {
 // Cargar datos del formulario
 async function cargarDatosFormulario() {
     try {
-        // Cargar solo pedidos con presupuesto ACEPTADO
+        // Cargar pedidos EN_PROCESO (tienen presupuesto aceptado) o NUEVO con presupuesto aceptado
         const pedidosResponse = await PedidoService.getAll();
         if (pedidosResponse.success && pedidosResponse.data) {
             pedidos = pedidosResponse.data.filter(p =>
-                p.estado === 'PRESUPUESTO_ACEPTADO'
+                p.estado === 'EN_PROCESO' || p.estado === 'NUEVO'
             );
             const select = document.getElementById('idPedido');
             select.innerHTML = '<option value="">Seleccione un pedido</option>' +
@@ -210,21 +206,39 @@ async function cargarDatosFormulario() {
                             // Filtrar técnicos por categoría del pedido
                             const selectTecnico = document.getElementById('idTecnicoAsignado');
                             const categoriaIdPedido = pedido.categoria?.idCategoria;
+                            const categoriaNombre = pedido.categoria?.nombre || 'Sin categoría';
 
                             if (categoriaIdPedido && tecnicos.length > 0) {
-                                // Filtrar técnicos que coincidan con la categoría del pedido o que no tengan categoría asignada
-                                const tecnicosFiltrados = tecnicos.filter(t =>
-                                    !t.categoria || t.categoria.idCategoria === categoriaIdPedido
-                                );
+                                // Filtrar técnicos que coincidan con la categoría del pedido
+                                // Primero intentar por relación categoria, si no, por campo especialidad
+                                const tecnicosFiltrados = tecnicos.filter(t => {
+                                    // Si tiene categoría asignada, comparar por ID
+                                    if (t.categoria && t.categoria.idCategoria) {
+                                        return t.categoria.idCategoria === categoriaIdPedido;
+                                    }
+                                    // Si no tiene categoría pero tiene especialidad, comparar por nombre (case-insensitive)
+                                    if (t.especialidad) {
+                                        return t.especialidad.toLowerCase().includes(categoriaNombre.toLowerCase()) ||
+                                               categoriaNombre.toLowerCase().includes(t.especialidad.toLowerCase());
+                                    }
+                                    return false;
+                                });
 
+                                if (tecnicosFiltrados.length > 0) {
+                                    selectTecnico.innerHTML = '<option value="">Sin asignar</option>' +
+                                        tecnicosFiltrados.map(t =>
+                                            `<option value="${t.idTecnico}">${t.nombre} ${t.apellido}${t.especialidad ? ' - ' + t.especialidad : ''}</option>`
+                                        ).join('');
+                                } else {
+                                    selectTecnico.innerHTML = '<option value="">Sin asignar</option>' +
+                                        `<option disabled>No hay técnicos de ${categoriaNombre}</option>`;
+                                }
+                            } else {
+                                // Si el pedido no tiene categoría, mostrar todos los técnicos
                                 selectTecnico.innerHTML = '<option value="">Sin asignar</option>' +
-                                    tecnicosFiltrados.map(t =>
+                                    tecnicos.map(t =>
                                         `<option value="${t.idTecnico}">${t.nombre} ${t.apellido}${t.especialidad ? ' - ' + t.especialidad : ''}${t.categoria ? ' (' + t.categoria.nombre + ')' : ''}</option>`
                                     ).join('');
-
-                                if (tecnicosFiltrados.length === 0) {
-                                    selectTecnico.innerHTML += '<option disabled>No hay técnicos disponibles para esta categoría</option>';
-                                }
                             }
                         }
                     } catch (error) {
@@ -267,6 +281,11 @@ async function openModalOrden() {
     document.getElementById('ordenForm').reset();
     document.getElementById('ordenId').value = '';
 
+    // Mostrar campos de pedido y presupuesto (modo creación)
+    document.getElementById('divPedido').style.display = 'block';
+    document.getElementById('divPresupuesto').style.display = 'block';
+    document.getElementById('idPedido').required = true;
+
     // Limpiar repuestos de OT
     repuestosOT = [];
     renderRepuestosOTTable();
@@ -296,11 +315,16 @@ async function editarOrden(id) {
 
             await cargarDatosFormulario();
 
+            // Ocultar campos de pedido y presupuesto (modo edición)
+            document.getElementById('divPedido').style.display = 'none';
+            document.getElementById('divPresupuesto').style.display = 'none';
+            document.getElementById('idPedido').required = false;
+
             // Llenar formulario
             document.getElementById('ordenId').value = orden.idOt;
             document.getElementById('idPedido').value = orden.pedido?.idPedido || '';
 
-            // Cargar presupuesto del pedido
+            // Cargar presupuesto del pedido (aunque esté oculto, mantener el valor)
             if (orden.presupuesto) {
                 document.getElementById('presupuestoInfo').value =
                     `${orden.presupuesto.numeroPresupuesto} - Total: ${formatMoney(orden.presupuesto.total)}`;
@@ -674,9 +698,6 @@ function abrirModalRevision(orden) {
     document.getElementById('revCostoManoObra').value = costoManoObraFinal > 0 ?
         formatMoney(costoManoObraFinal) : 'N/A';
 
-    document.getElementById('revPresupuestoInicial').value = orden.presupuesto?.total ?
-        formatMoney(orden.presupuesto.total) : 'N/A';
-
     // Presupuesto final (editable) - inicializar con presupuesto inicial
     const presupuestoInicial = orden.presupuesto?.total || 0;
     document.getElementById('revPresupuestoFinal').value = presupuestoInicial;
@@ -693,32 +714,7 @@ function abrirModalRevision(orden) {
 
     document.getElementById('revObservacionesDevolucion').value = '';
 
-    // Calcular diferencia inicial
-    calcularDiferencia();
-
-    // Agregar listener para calcular diferencia en tiempo real
-    document.getElementById('revPresupuestoFinal').addEventListener('input', calcularDiferencia);
-
     modalRevision.show();
-}
-
-// Calcular diferencia entre presupuesto inicial y final
-function calcularDiferencia() {
-    const presupuestoInicial = ordenEnRevision?.presupuesto?.total || 0;
-    const presupuestoFinal = parseFloat(document.getElementById('revPresupuestoFinal').value) || 0;
-    const diferencia = presupuestoFinal - presupuestoInicial;
-
-    const diferenciaCampo = document.getElementById('revDiferencia');
-    if (diferencia > 0) {
-        diferenciaCampo.value = `+${formatMoney(diferencia)} (Aumento)`;
-        diferenciaCampo.className = 'form-control bg-danger bg-opacity-10';
-    } else if (diferencia < 0) {
-        diferenciaCampo.value = `${formatMoney(diferencia)} (Reducción)`;
-        diferenciaCampo.className = 'form-control bg-success bg-opacity-10';
-    } else {
-        diferenciaCampo.value = 'Sin cambios';
-        diferenciaCampo.className = 'form-control bg-light';
-    }
 }
 
 // Aprobar y cerrar OT

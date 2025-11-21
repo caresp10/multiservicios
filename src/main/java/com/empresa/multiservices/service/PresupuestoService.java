@@ -161,6 +161,21 @@ public class PresupuestoService {
         // Guardar el estado anterior
         EstadoPresupuesto estadoAnterior = presupuesto.getEstado();
 
+        // Validar que no se pueda aceptar un presupuesto vencido
+        EstadoPresupuesto nuevoEstadoSolicitado = EstadoPresupuesto.valueOf(request.getEstado());
+        if (nuevoEstadoSolicitado == EstadoPresupuesto.ACEPTADO) {
+            // Verificar si está vencido por fecha
+            if (presupuesto.getFechaVencimiento() != null &&
+                presupuesto.getFechaVencimiento().isBefore(LocalDate.now())) {
+                throw new RuntimeException("No se puede aceptar el presupuesto porque está vencido. Fecha de vencimiento: " +
+                    presupuesto.getFechaVencimiento().toString());
+            }
+            // Verificar si ya estaba marcado como VENCIDO
+            if (estadoAnterior == EstadoPresupuesto.VENCIDO) {
+                throw new RuntimeException("No se puede aceptar un presupuesto que ya está marcado como VENCIDO");
+            }
+        }
+
         // Actualizar datos del presupuesto
         presupuesto.setFechaVencimiento(request.getFechaVencimiento());
         presupuesto.setDescuento(request.getDescuento() != null ? request.getDescuento() : BigDecimal.ZERO);
@@ -285,5 +300,57 @@ public class PresupuestoService {
         String fecha = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         long count = presupuestoRepository.count() + 1;
         return String.format("PRES-%s-%04d", fecha, count);
+    }
+
+    /**
+     * Verificar y actualizar presupuestos vencidos.
+     * Marca como VENCIDO los presupuestos PENDIENTES cuya fecha de vencimiento ya pasó.
+     */
+    public int verificarPresupuestosVencidos() {
+        LocalDate hoy = LocalDate.now();
+        List<Presupuesto> presupuestosPendientes = presupuestoRepository.findByEstado(EstadoPresupuesto.PENDIENTE);
+        int contador = 0;
+
+        for (Presupuesto presupuesto : presupuestosPendientes) {
+            if (presupuesto.getFechaVencimiento() != null &&
+                presupuesto.getFechaVencimiento().isBefore(hoy)) {
+
+                presupuesto.setEstado(EstadoPresupuesto.VENCIDO);
+                presupuesto.setFechaRespuesta(LocalDateTime.now());
+
+                // Actualizar el pedido asociado
+                Pedido pedido = presupuesto.getPedido();
+                pedido.setEstado(com.empresa.multiservices.model.enums.EstadoPedido.CANCELADO);
+                pedidoRepository.save(pedido);
+
+                presupuestoRepository.save(presupuesto);
+                contador++;
+
+                System.out.println("⏰ Presupuesto " + presupuesto.getNumeroPresupuesto() +
+                    " marcado como VENCIDO (vencía: " + presupuesto.getFechaVencimiento() + ")");
+            }
+        }
+
+        return contador;
+    }
+
+    /**
+     * Verificar si un presupuesto específico está vencido
+     */
+    public boolean estaVencido(Long id) {
+        Presupuesto presupuesto = presupuestoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Presupuesto no encontrado"));
+
+        if (presupuesto.getEstado() == EstadoPresupuesto.VENCIDO) {
+            return true;
+        }
+
+        if (presupuesto.getFechaVencimiento() != null &&
+            presupuesto.getFechaVencimiento().isBefore(LocalDate.now()) &&
+            presupuesto.getEstado() == EstadoPresupuesto.PENDIENTE) {
+            return true;
+        }
+
+        return false;
     }
 }

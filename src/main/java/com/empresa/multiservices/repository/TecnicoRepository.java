@@ -20,4 +20,7 @@ public interface TecnicoRepository extends JpaRepository<Tecnico, Long> {
     Optional<Tecnico> findByUsuario(Usuario usuario);
 
     Optional<Tecnico> findByUsuario_IdUsuario(Long idUsuario);
+
+    // Buscar técnicos activos por categoría
+    List<Tecnico> findByActivoTrueAndCategoria_IdCategoria(Long idCategoria);
 }

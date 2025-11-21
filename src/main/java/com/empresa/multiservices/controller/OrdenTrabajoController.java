@@ -35,11 +35,21 @@ public class OrdenTrabajoController {
     
     @PatchMapping("/{id}/asignar")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR', 'DUENO')")
-    public ResponseEntity<ApiResponse> asignarTecnico(@PathVariable Long id, 
+    public ResponseEntity<ApiResponse> asignarTecnico(@PathVariable Long id,
                                                        @RequestBody Map<String, Long> request) {
         Long idTecnico = request.get("idTecnico");
         OrdenTrabajo ot = otService.asignarTecnico(id, idTecnico);
         return ResponseEntity.ok(ApiResponse.success("Técnico asignado exitosamente", ot));
+    }
+
+    @PatchMapping("/{id}/reasignar")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR', 'DUENO')")
+    public ResponseEntity<ApiResponse> reasignarTecnico(@PathVariable Long id,
+                                                         @RequestBody Map<String, Object> request) {
+        Long idNuevoTecnico = ((Number) request.get("idTecnico")).longValue();
+        String motivo = (String) request.get("motivo");
+        OrdenTrabajo ot = otService.reasignarTecnico(id, idNuevoTecnico, motivo);
+        return ResponseEntity.ok(ApiResponse.success("Técnico reasignado exitosamente", ot));
     }
     
     @PatchMapping("/{id}/iniciar")

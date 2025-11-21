@@ -60,7 +60,9 @@
                                 <option value="">Todos los roles</option>
                                 <option value="ADMIN">Administrador</option>
                                 <option value="TECNICO">Técnico</option>
-                                <option value="RECEPCIONISTA">Recepcionista</option>
+                                <option value="SUPERVISOR">Supervisor</option>
+                                <option value="DUENO">Dueño</option>
+                                <option value="RECEPCION">Recepción</option>
                             </select>
                         </div>
                         <div class="col-md-1"></div>
@@ -126,13 +128,16 @@
                                    placeholder="Nombre de usuario">
                         </div>
 
-                        <!-- Password (solo para crear) -->
+                        <!-- Password -->
                         <div class="mb-3" id="passwordDiv">
-                            <label for="password" class="form-label">
+                            <label for="password" class="form-label" id="passwordLabel">
                                 <i class="fas fa-lock"></i> Contraseña *
                             </label>
                             <input type="password" class="form-control" id="password"
                                    placeholder="Contraseña">
+                            <small class="text-muted" id="passwordHelp" style="display: none;">
+                                Dejar en blanco para mantener la contraseña actual
+                            </small>
                         </div>
 
                         <!-- Nombre -->
@@ -171,7 +176,9 @@
                                 <option value="">Seleccione un rol</option>
                                 <option value="ADMIN">Administrador</option>
                                 <option value="TECNICO">Técnico</option>
-                                <option value="RECEPCIONISTA">Recepcionista</option>
+                                <option value="SUPERVISOR">Supervisor</option>
+                                <option value="DUENO">Dueño</option>
+                                <option value="RECEPCION">Recepción</option>
                             </select>
                         </div>
 

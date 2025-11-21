@@ -77,9 +77,27 @@ function renderPedidos(data) {
                 }">${pedido.prioridad}</span>
             </td>
             <td>
-                <span class="badge bg-${getEstadoClass(pedido.estado)}">
-                    ${formatEstado(pedido.estado)}
-                </span>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-${getEstadoClass(pedido.estado)} dropdown-toggle"
+                            type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        ${formatEstado(pedido.estado)}
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item ${pedido.estado === 'NUEVO' ? 'active' : ''}"
+                               href="#" onclick="cambiarEstadoPedido(${pedido.idPedido}, 'NUEVO'); return false;">
+                               <i class="fas fa-circle text-primary me-2"></i>Nuevo</a></li>
+                        <li><a class="dropdown-item ${pedido.estado === 'EN_PROCESO' ? 'active' : ''}"
+                               href="#" onclick="cambiarEstadoPedido(${pedido.idPedido}, 'EN_PROCESO'); return false;">
+                               <i class="fas fa-circle text-warning me-2"></i>En Proceso</a></li>
+                        <li><a class="dropdown-item ${pedido.estado === 'COMPLETADO' ? 'active' : ''}"
+                               href="#" onclick="cambiarEstadoPedido(${pedido.idPedido}, 'COMPLETADO'); return false;">
+                               <i class="fas fa-circle text-success me-2"></i>Completado</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item ${pedido.estado === 'CANCELADO' ? 'active' : ''}"
+                               href="#" onclick="cambiarEstadoPedido(${pedido.idPedido}, 'CANCELADO'); return false;">
+                               <i class="fas fa-circle text-danger me-2"></i>Cancelado</a></li>
+                    </ul>
+                </div>
             </td>
             <td>${formatDate(pedido.fechaPedido)}</td>
             <td>
@@ -269,6 +287,33 @@ async function eliminarPedido(id) {
     } catch (error) {
         console.error('Error:', error);
         alert('Error al eliminar el pedido: ' + error.message);
+    }
+}
+
+// Cambiar estado del pedido
+async function cambiarEstadoPedido(id, nuevoEstado) {
+    const pedido = pedidos.find(p => p.idPedido === id);
+    if (!pedido) return;
+
+    if (pedido.estado === nuevoEstado) return;
+
+    const estadoTexto = formatEstado(nuevoEstado);
+    if (!confirm(`¿Cambiar el estado del pedido ${pedido.numeroPedido} a "${estadoTexto}"?`)) {
+        return;
+    }
+
+    try {
+        const response = await PedidoService.cambiarEstado(id, nuevoEstado);
+
+        if (response.success) {
+            await cargarPedidos();
+            alert(`Estado cambiado a "${estadoTexto}" exitosamente`);
+        } else {
+            throw new Error(response.message || 'Error al cambiar estado');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al cambiar el estado: ' + error.message);
     }
 }
 

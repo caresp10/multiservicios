@@ -10,6 +10,7 @@ document.getElementById('userAvatar').textContent = user.nombre.charAt(0);
 // Variables globales
 let repuestos = [];
 let categorias = [];
+let proveedores = [];
 const modal = new bootstrap.Modal(document.getElementById('modalRepuesto'));
 
 // Función de logout
@@ -191,7 +192,7 @@ async function cargarCategorias() {
             categorias = categoriasUnicas;
 
             const selectForm = document.getElementById('idCategoria');
-            selectForm.innerHTML = '<option value="">Sin categoría</option>' +
+            selectForm.innerHTML = '<option value="">Seleccione categoría</option>' +
                 categorias.filter(c => c.activo).map(c =>
                     `<option value="${c.idCategoria}">${c.nombre}</option>`
                 ).join('');
@@ -201,9 +202,73 @@ async function cargarCategorias() {
                 categorias.map(c =>
                     `<option value="${c.idCategoria}">${c.nombre}</option>`
                 ).join('');
+
+            // Agregar event listener para generar código automático
+            selectForm.addEventListener('change', async function() {
+                const idCategoria = this.value;
+                const idRepuesto = document.getElementById('idRepuesto').value;
+
+                // Solo generar código si es un nuevo repuesto (no edición)
+                if (idCategoria && !idRepuesto) {
+                    await generarCodigoAutomatico(idCategoria);
+                } else if (!idCategoria && !idRepuesto) {
+                    // Si no hay categoría seleccionada, limpiar código
+                    document.getElementById('codigo').value = '';
+                }
+            });
+
+            // Agregar event listener para botón de regenerar código
+            document.getElementById('btnRefreshCodigo')?.addEventListener('click', async function() {
+                const idCategoria = document.getElementById('idCategoria').value;
+                const idRepuesto = document.getElementById('idRepuesto').value;
+
+                if (idCategoria && !idRepuesto) {
+                    await generarCodigoAutomatico(idCategoria);
+                } else if (!idCategoria) {
+                    alert('Seleccione una categoría primero');
+                }
+            });
         }
     } catch (error) {
         console.error('Error cargando categorías:', error);
+    }
+}
+
+// Generar código automático basado en categoría
+async function generarCodigoAutomatico(idCategoria) {
+    const codigoInput = document.getElementById('codigo');
+
+    try {
+        // Mostrar indicador de carga
+        codigoInput.value = 'Generando...';
+
+        const response = await fetch(`${CONFIG.API_URL}/repuestos/generar-codigo/${idCategoria}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${AuthService.getToken()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+            codigoInput.value = result.data;
+            codigoInput.readOnly = true;
+        } else {
+            console.error('Error generando código:', result.message);
+            // Si falla, permitir ingreso manual
+            codigoInput.value = '';
+            codigoInput.readOnly = false;
+            codigoInput.placeholder = 'Ingrese código manualmente';
+            alert('No se pudo generar el código automáticamente. Puede ingresarlo manualmente.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        // Si falla, permitir ingreso manual
+        codigoInput.value = '';
+        codigoInput.readOnly = false;
+        codigoInput.placeholder = 'Ingrese código manualmente';
     }
 }
 
@@ -232,6 +297,17 @@ function openModalRepuesto() {
     document.getElementById('estadoContainer').style.display = 'none';
     document.getElementById('activo').checked = true;
     document.getElementById('margenCalculado').value = '';
+
+    // Configurar campo código para nuevo repuesto
+    const codigoInput = document.getElementById('codigo');
+    codigoInput.value = '';
+    codigoInput.readOnly = true;
+    codigoInput.placeholder = 'Se genera automáticamente';
+
+    // Mostrar botón de regenerar
+    const btnRefresh = document.getElementById('btnRefreshCodigo');
+    if (btnRefresh) btnRefresh.style.display = 'block';
+
     modal.show();
 }
 
@@ -244,10 +320,10 @@ async function editarRepuesto(id) {
             const repuesto = response.data;
 
             document.getElementById('idRepuesto').value = repuesto.idRepuesto;
+            document.getElementById('idCategoria').value = repuesto.categoria?.idCategoria || '';
             document.getElementById('codigo').value = repuesto.codigo;
             document.getElementById('nombre').value = repuesto.nombre;
             document.getElementById('descripcion').value = repuesto.descripcion || '';
-            document.getElementById('idCategoria').value = repuesto.categoria?.idCategoria || '';
             document.getElementById('marca').value = repuesto.marca || '';
             document.getElementById('modelo').value = repuesto.modelo || '';
             document.getElementById('unidadMedida').value = repuesto.unidadMedida || 'UNIDAD';
@@ -258,9 +334,17 @@ async function editarRepuesto(id) {
             document.getElementById('stockMinimo').value = repuesto.stockMinimo || 10;
             document.getElementById('stockMaximo').value = repuesto.stockMaximo || 100;
             document.getElementById('puntoReorden').value = repuesto.puntoReorden || '';
-            document.getElementById('proveedor').value = repuesto.proveedor || '';
-            document.getElementById('telefonoProveedor').value = repuesto.telefonoProveedor || '';
+            document.getElementById('idProveedor').value = repuesto.proveedor?.idProveedor || '';
             document.getElementById('activo').checked = repuesto.activo;
+
+            // En modo edición, el código no se puede cambiar
+            const codigoInput = document.getElementById('codigo');
+            codigoInput.readOnly = true;
+            codigoInput.placeholder = '';
+
+            // Ocultar botón de regenerar en modo edición
+            const btnRefresh = document.getElementById('btnRefreshCodigo');
+            if (btnRefresh) btnRefresh.style.display = 'none';
 
             calcularMargen();
 
@@ -285,6 +369,7 @@ async function guardarRepuesto() {
 
     const idRepuesto = document.getElementById('idRepuesto').value;
     const idCategoria = document.getElementById('idCategoria').value;
+    const idProveedor = document.getElementById('idProveedor').value;
 
     const repuestoData = {
         codigo: document.getElementById('codigo').value.trim().toUpperCase(),
@@ -301,8 +386,7 @@ async function guardarRepuesto() {
         stockMinimo: parseInt(document.getElementById('stockMinimo').value) || 10,
         stockMaximo: parseInt(document.getElementById('stockMaximo').value) || 100,
         puntoReorden: parseInt(document.getElementById('puntoReorden').value) || null,
-        proveedor: document.getElementById('proveedor').value.trim() || null,
-        telefonoProveedor: document.getElementById('telefonoProveedor').value.trim() || null,
+        proveedor: idProveedor ? { idProveedor: parseInt(idProveedor) } : null,
         activo: document.getElementById('activo').checked
     };
 
@@ -349,8 +433,27 @@ async function eliminarRepuesto(id) {
     }
 }
 
+// Cargar proveedores
+async function cargarProveedores() {
+    try {
+        const response = await ProveedorService.getAll();
+        if (response.success && response.data) {
+            proveedores = response.data;
+
+            const selectProveedor = document.getElementById('idProveedor');
+            selectProveedor.innerHTML = '<option value="">Seleccione proveedor</option>' +
+                proveedores.filter(p => p.activo).map(p =>
+                    `<option value="${p.idProveedor}">${p.nombre}${p.telefono ? ' - ' + p.telefono : ''}</option>`
+                ).join('');
+        }
+    } catch (error) {
+        console.error('Error cargando proveedores:', error);
+    }
+}
+
 // Inicializar al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
     cargarCategorias();
+    cargarProveedores();
     cargarRepuestos();
 });

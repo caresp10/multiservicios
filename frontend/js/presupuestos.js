@@ -6,10 +6,6 @@ document.getElementById('userName').textContent = `${user.nombre} ${user.apellid
 document.getElementById('userRole').textContent = user.rol;
 document.getElementById('userAvatar').textContent = user.nombre.charAt(0);
 
-if (user.rol !== 'ADMIN') {
-    document.getElementById('menuUsuarios').style.display = 'none';
-}
-
 let presupuestos = [];
 let pedidos = [];
 let presupuestoItems = [];
@@ -194,6 +190,14 @@ function renderPresupuestos(data) {
                 </span>
             </td>
             <td>
+                <button class="btn btn-sm btn-outline-info" onclick="vistaPrevia(${presupuesto.idPresupuesto})"
+                        title="Vista Previa">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-success" onclick="generarPDF(${presupuesto.idPresupuesto})"
+                        title="Descargar PDF">
+                    <i class="fas fa-file-pdf"></i>
+                </button>
                 <button class="btn btn-sm btn-outline-primary" onclick="editarPresupuesto(${presupuesto.idPresupuesto})"
                         title="Editar">
                     <i class="fas fa-edit"></i>
@@ -747,6 +751,245 @@ function agregarRepuesto() {
 
 // Hacer la función global
 window.agregarRepuesto = agregarRepuesto;
+
+// ==============================================
+// FUNCIONES PARA VISTA PREVIA Y PDF
+// ==============================================
+
+let modalVistaPrevia = null;
+let presupuestoActualPDF = null;
+
+// Vista previa del presupuesto
+async function vistaPrevia(id) {
+    try {
+        const response = await PresupuestoService.getById(id);
+
+        if (response.success && response.data) {
+            const presupuesto = response.data;
+            presupuestoActualPDF = presupuesto;
+
+            const contenido = generarHTMLPresupuesto(presupuesto);
+            document.getElementById('vistaPreviaContent').innerHTML = contenido;
+
+            // Configurar botón de descarga en el modal
+            document.getElementById('btnDescargarPDF').onclick = () => generarPDF(id);
+
+            if (!modalVistaPrevia) {
+                modalVistaPrevia = new bootstrap.Modal(document.getElementById('modalVistaPrevia'));
+            }
+            modalVistaPrevia.show();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al cargar la vista previa del presupuesto');
+    }
+}
+
+// Hacer la función global
+window.vistaPrevia = vistaPrevia;
+
+// Generar PDF del presupuesto
+async function generarPDF(id) {
+    try {
+        let presupuesto = presupuestoActualPDF;
+
+        // Si no tenemos el presupuesto en memoria, cargarlo
+        if (!presupuesto || presupuesto.idPresupuesto !== id) {
+            const response = await PresupuestoService.getById(id);
+            if (response.success && response.data) {
+                presupuesto = response.data;
+            } else {
+                throw new Error('No se pudo cargar el presupuesto');
+            }
+        }
+
+        // Crear elemento temporal para el PDF
+        const elementoPDF = document.createElement('div');
+        elementoPDF.innerHTML = generarHTMLPresupuesto(presupuesto, true);
+        elementoPDF.style.padding = '20px';
+        document.body.appendChild(elementoPDF);
+
+        const opciones = {
+            margin: 10,
+            filename: `Presupuesto_${presupuesto.numeroPresupuesto}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        await html2pdf().set(opciones).from(elementoPDF).save();
+
+        // Limpiar elemento temporal
+        document.body.removeChild(elementoPDF);
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al generar el PDF: ' + error.message);
+    }
+}
+
+// Hacer la función global
+window.generarPDF = generarPDF;
+
+// Generar HTML del presupuesto para vista previa y PDF
+function generarHTMLPresupuesto(presupuesto, paraPDF = false) {
+    const cliente = presupuesto.pedido?.cliente || {};
+    const items = presupuesto.items || [];
+
+    const estiloExtra = paraPDF ? 'font-size: 12px;' : '';
+
+    return `
+        <div style="font-family: Arial, sans-serif; ${estiloExtra}">
+            <!-- Encabezado -->
+            <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #007bff; padding-bottom: 15px;">
+                <h2 style="margin: 0; color: #007bff;">
+                    <i class="fas fa-tools"></i> MULTISERVICIOS
+                </h2>
+                <p style="margin: 5px 0; color: #666;">Sistema de Gestión de Servicios</p>
+            </div>
+
+            <!-- Título del documento -->
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; background: #f8f9fa; padding: 10px; border-radius: 5px;">
+                    PRESUPUESTO N° ${presupuesto.numeroPresupuesto}
+                </h3>
+            </div>
+
+            <!-- Información del cliente y presupuesto -->
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <div style="flex: 1; padding-right: 10px;">
+                    <h5 style="color: #007bff; margin-bottom: 10px;">
+                        <i class="fas fa-user"></i> Datos del Cliente
+                    </h5>
+                    <p style="margin: 3px 0;"><strong>Nombre:</strong> ${cliente.nombre || ''} ${cliente.apellido || ''}</p>
+                    <p style="margin: 3px 0;"><strong>RUC/CI:</strong> ${cliente.ruc || cliente.cedula || 'N/A'}</p>
+                    <p style="margin: 3px 0;"><strong>Teléfono:</strong> ${cliente.telefono || 'N/A'}</p>
+                    <p style="margin: 3px 0;"><strong>Email:</strong> ${cliente.email || 'N/A'}</p>
+                    <p style="margin: 3px 0;"><strong>Dirección:</strong> ${cliente.direccion || 'N/A'}</p>
+                </div>
+                <div style="flex: 1; padding-left: 10px; text-align: right;">
+                    <h5 style="color: #007bff; margin-bottom: 10px;">
+                        <i class="fas fa-file-invoice"></i> Datos del Presupuesto
+                    </h5>
+                    <p style="margin: 3px 0;"><strong>Pedido:</strong> ${presupuesto.pedido?.numeroPedido || 'N/A'}</p>
+                    <p style="margin: 3px 0;"><strong>Fecha:</strong> ${formatDate(presupuesto.fechaGeneracion)}</p>
+                    <p style="margin: 3px 0;"><strong>Vencimiento:</strong> ${presupuesto.fechaVencimiento ? formatDateOnly(presupuesto.fechaVencimiento) : 'N/A'}</p>
+                    <p style="margin: 3px 0;"><strong>Validez:</strong> ${presupuesto.validezDias || 15} días</p>
+                    <p style="margin: 3px 0;">
+                        <strong>Estado:</strong>
+                        <span style="padding: 2px 8px; border-radius: 3px; background: ${getEstadoColorHex(presupuesto.estado)}; color: white;">
+                            ${formatEstado(presupuesto.estado)}
+                        </span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Tabla de Items -->
+            <div style="margin-bottom: 20px;">
+                <h5 style="color: #007bff; margin-bottom: 10px;">
+                    <i class="fas fa-list"></i> Detalle de Items
+                </h5>
+                <table style="width: 100%; border-collapse: collapse; font-size: ${paraPDF ? '11px' : '13px'};">
+                    <thead>
+                        <tr style="background: #007bff; color: white;">
+                            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Descripción</th>
+                            <th style="padding: 8px; text-align: center; border: 1px solid #ddd; width: 80px;">Cant.</th>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #ddd; width: 100px;">P. Unit.</th>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #ddd; width: 100px;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.map(item => `
+                            <tr>
+                                <td style="padding: 6px 8px; border: 1px solid #ddd;">
+                                    ${getTipoItemBadgeHTML(item.tipoItem)} ${item.descripcion}
+                                </td>
+                                <td style="padding: 6px 8px; text-align: center; border: 1px solid #ddd;">${item.cantidad}</td>
+                                <td style="padding: 6px 8px; text-align: right; border: 1px solid #ddd;">${formatMoney(item.precioUnitario)}</td>
+                                <td style="padding: 6px 8px; text-align: right; border: 1px solid #ddd;"><strong>${formatMoney(item.subtotal || item.cantidad * item.precioUnitario)}</strong></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Totales -->
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+                <div style="width: 300px; background: #f8f9fa; padding: 15px; border-radius: 5px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>Subtotal:</span>
+                        <span>${formatMoney(presupuesto.subtotal)}</span>
+                    </div>
+                    ${presupuesto.descuento > 0 ? `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #dc3545;">
+                        <span>Descuento:</span>
+                        <span>-${formatMoney(presupuesto.descuento)}</span>
+                    </div>
+                    ` : ''}
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>IVA (10%):</span>
+                        <span>${formatMoney(presupuesto.iva)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 1.2em; font-weight: bold; border-top: 2px solid #007bff; padding-top: 10px; margin-top: 10px;">
+                        <span>TOTAL:</span>
+                        <span style="color: #007bff;">${formatMoney(presupuesto.total)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Condiciones de Pago -->
+            ${presupuesto.condicionesPago ? `
+            <div style="margin-bottom: 15px;">
+                <h5 style="color: #007bff; margin-bottom: 10px;">
+                    <i class="fas fa-file-contract"></i> Condiciones de Pago
+                </h5>
+                <p style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 0;">
+                    ${presupuesto.condicionesPago}
+                </p>
+            </div>
+            ` : ''}
+
+            <!-- Observaciones -->
+            ${presupuesto.observaciones ? `
+            <div style="margin-bottom: 15px;">
+                <h5 style="color: #007bff; margin-bottom: 10px;">
+                    <i class="fas fa-comment"></i> Observaciones
+                </h5>
+                <p style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 0;">
+                    ${presupuesto.observaciones}
+                </p>
+            </div>
+            ` : ''}
+
+            <!-- Pie de página -->
+            <div style="text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; color: #666; font-size: 11px;">
+                <p style="margin: 0;">Este presupuesto tiene una validez de ${presupuesto.validezDias || 15} días desde su fecha de emisión.</p>
+                <p style="margin: 5px 0;">Para consultas comunicarse al teléfono: (XXX) XXX-XXXX</p>
+            </div>
+        </div>
+    `;
+}
+
+// Obtener color hexadecimal para el estado
+function getEstadoColorHex(estado) {
+    const colors = {
+        'PENDIENTE': '#ffc107',
+        'ACEPTADO': '#28a745',
+        'RECHAZADO': '#dc3545',
+        'VENCIDO': '#6c757d'
+    };
+    return colors[estado] || '#6c757d';
+}
+
+// Badge HTML para tipo de item (sin Font Awesome para PDF)
+function getTipoItemBadgeHTML(tipoItem) {
+    const badges = {
+        'SERVICIO': '<span style="background: #007bff; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px;">Servicio</span>',
+        'REPUESTO': '<span style="background: #17a2b8; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px;">Repuesto</span>',
+        'MANUAL': '<span style="background: #6c757d; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px;">Manual</span>'
+    };
+    return badges[tipoItem] || '';
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     cargarPresupuestos();

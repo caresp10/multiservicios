@@ -151,13 +151,30 @@
                         <input type="hidden" id="idRepuesto">
 
                         <div class="row">
-                            <!-- Código -->
+                            <!-- Categoría (primero para generar código) -->
+                            <div class="col-md-3 mb-3">
+                                <label for="idCategoria" class="form-label">
+                                    Categoría <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="idCategoria" required>
+                                    <option value="">Seleccione categoría</option>
+                                </select>
+                            </div>
+
+                            <!-- Código (generado automáticamente) -->
                             <div class="col-md-3 mb-3">
                                 <label for="codigo" class="form-label">
                                     Código <span class="text-danger">*</span>
                                 </label>
-                                <input type="text" class="form-control" id="codigo"
-                                       placeholder="Ej: REP-ELEC-001" required>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="codigo"
+                                           placeholder="Se genera automáticamente" required readonly>
+                                    <button class="btn btn-outline-secondary" type="button"
+                                            id="btnRefreshCodigo" title="Regenerar código">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted">Generado según categoría</small>
                             </div>
 
                             <!-- Nombre -->
@@ -167,16 +184,6 @@
                                 </label>
                                 <input type="text" class="form-control" id="nombre"
                                        placeholder="Ej: Llave termomagnética 10A" required>
-                            </div>
-
-                            <!-- Categoría -->
-                            <div class="col-md-3 mb-3">
-                                <label for="idCategoria" class="form-label">
-                                    Categoría
-                                </label>
-                                <select class="form-select" id="idCategoria">
-                                    <option value="">Sin categoría</option>
-                                </select>
                             </div>
                         </div>
 
@@ -278,16 +285,11 @@
                             </div>
 
                             <!-- Proveedor -->
-                            <div class="col-md-5 mb-3">
-                                <label for="proveedor" class="form-label">Proveedor</label>
-                                <input type="text" class="form-control" id="proveedor">
-                            </div>
-
-                            <!-- Teléfono Proveedor -->
-                            <div class="col-md-3 mb-3">
-                                <label for="telefonoProveedor" class="form-label">Tel. Proveedor</label>
-                                <input type="text" class="form-control" id="telefonoProveedor"
-                                       placeholder="0xxx-xxx-xxx">
+                            <div class="col-md-8 mb-3">
+                                <label for="idProveedor" class="form-label">Proveedor</label>
+                                <select class="form-select" id="idProveedor">
+                                    <option value="">Seleccione proveedor</option>
+                                </select>
                             </div>
                         </div>
 

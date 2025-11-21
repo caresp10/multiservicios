@@ -60,7 +60,7 @@ function setupSidebarToggle() {
     }
 }
 
-// Ocultar menú de administración para no-admin
+// Ocultar menú de administración para usuarios sin permisos
 function hideMenuForNonAdmin() {
     const user = AuthService.getUser();
     if (user && user.rol !== 'ADMIN') {
@@ -123,7 +123,7 @@ function adjustMenuByRole() {
         if (menuAdministracion) menuAdministracion.style.display = 'none';
         if (menuReportes) menuReportes.style.display = 'block';
     } else if (user.rol === 'DUENO') {
-        // Para DUENO: Acceso completo excepto Administración de usuarios
+        // Para DUENO: Operación del negocio y reportes (sin administración)
         if (menuMisOrdenes) menuMisOrdenes.style.display = 'none';
         if (menuClientes) menuClientes.style.display = 'block';
         if (menuPedidos) menuPedidos.style.display = 'block';

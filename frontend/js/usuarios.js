@@ -12,6 +12,7 @@ document.getElementById('userRole').textContent = user.rol;
 document.getElementById('userAvatar').textContent = user.nombre.charAt(0);
 
 let usuarios = [];
+let rolesDisponibles = [];
 const modal = new bootstrap.Modal(document.getElementById('modalUsuario'));
 
 document.getElementById('sidebarToggle')?.addEventListener('click', function() {
@@ -115,6 +116,8 @@ function openModalUsuario() {
     document.getElementById('usuarioId').value = '';
     document.getElementById('passwordDiv').style.display = 'block';
     document.getElementById('password').required = true;
+    document.getElementById('passwordLabel').innerHTML = '<i class="fas fa-lock"></i> Contraseña *';
+    document.getElementById('passwordHelp').style.display = 'none';
 
     modal.show();
 }
@@ -136,9 +139,12 @@ async function editarUsuario(id) {
             document.getElementById('rol').value = usuario.rol;
             document.getElementById('activo').value = usuario.activo.toString();
 
-            // Ocultar campo de contraseña al editar
-            document.getElementById('passwordDiv').style.display = 'none';
+            // Mostrar campo de contraseña como opcional al editar
+            document.getElementById('passwordDiv').style.display = 'block';
             document.getElementById('password').required = false;
+            document.getElementById('password').value = '';
+            document.getElementById('passwordLabel').innerHTML = '<i class="fas fa-lock"></i> Nueva Contraseña';
+            document.getElementById('passwordHelp').style.display = 'block';
 
             modal.show();
         }
@@ -166,10 +172,11 @@ async function guardarUsuario() {
     };
 
     const id = document.getElementById('usuarioId').value;
+    const password = document.getElementById('password').value;
 
-    // Solo incluir password si es nuevo usuario
-    if (!id) {
-        usuarioData.password = document.getElementById('password').value;
+    // Incluir password si es nuevo usuario o si se proporcionó una nueva
+    if (!id || password) {
+        usuarioData.password = password;
     }
 
     try {
@@ -198,7 +205,9 @@ function formatRol(rol) {
     const roles = {
         'ADMIN': 'Administrador',
         'TECNICO': 'Técnico',
-        'RECEPCIONISTA': 'Recepcionista'
+        'SUPERVISOR': 'Supervisor',
+        'DUENO': 'Dueño',
+        'RECEPCION': 'Recepción'
     };
     return roles[rol] || rol;
 }
@@ -207,11 +216,39 @@ function getRolColor(rol) {
     const colors = {
         'ADMIN': 'danger',
         'TECNICO': 'primary',
-        'RECEPCIONISTA': 'info'
+        'SUPERVISOR': 'warning',
+        'DUENO': 'success',
+        'RECEPCION': 'info'
     };
     return colors[rol] || 'secondary';
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    cargarUsuarios();
+async function cargarRoles() {
+    try {
+        const response = await UsuarioService.getRoles();
+        if (response.success && response.data) {
+            rolesDisponibles = response.data;
+
+            // Actualizar select del filtro
+            const filterRol = document.getElementById('filterRol');
+            filterRol.innerHTML = '<option value="">Todos los roles</option>' +
+                rolesDisponibles.map(rol =>
+                    `<option value="${rol.valor}">${rol.nombre}</option>`
+                ).join('');
+
+            // Actualizar select del modal
+            const selectRol = document.getElementById('rol');
+            selectRol.innerHTML = '<option value="">Seleccione un rol</option>' +
+                rolesDisponibles.map(rol =>
+                    `<option value="${rol.valor}">${rol.nombre}</option>`
+                ).join('');
+        }
+    } catch (error) {
+        console.error('Error al cargar roles:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+    await cargarRoles();
+    await cargarUsuarios();
 });

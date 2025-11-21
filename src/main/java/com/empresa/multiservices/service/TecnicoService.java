@@ -110,4 +110,9 @@ public class TecnicoService {
         tecnico.setActivo(false);
         tecnicoRepository.save(tecnico);
     }
+
+    @Transactional(readOnly = true)
+    public List<Tecnico> listarPorCategoria(Long idCategoria) {
+        return tecnicoRepository.findByActivoTrueAndCategoria_IdCategoria(idCategoria);
+    }
 }

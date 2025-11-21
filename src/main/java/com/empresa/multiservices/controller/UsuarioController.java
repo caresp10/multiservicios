@@ -12,7 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -71,5 +74,27 @@ public class UsuarioController {
     public ResponseEntity<ApiResponse> eliminar(@PathVariable Long id) {
         usuarioService.eliminar(id);
         return ResponseEntity.ok(ApiResponse.success("Usuario eliminado exitosamente", null));
+    }
+
+    @GetMapping("/roles")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'SUPERVISOR')")
+    public ResponseEntity<ApiResponse> obtenerRoles() {
+        List<Map<String, String>> roles = Arrays.stream(Rol.values())
+                .map(rol -> Map.of(
+                        "valor", rol.name(),
+                        "nombre", formatRolNombre(rol)
+                ))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success("Lista de roles", roles));
+    }
+
+    private String formatRolNombre(Rol rol) {
+        return switch (rol) {
+            case ADMIN -> "Administrador";
+            case TECNICO -> "Técnico";
+            case SUPERVISOR -> "Supervisor";
+            case DUENO -> "Dueño";
+            case RECEPCION -> "Recepción";
+        };
     }
 }

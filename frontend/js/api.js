@@ -47,6 +47,10 @@ class ApiService {
     static delete(endpoint) {
         return this.request(endpoint, { method: 'DELETE' });
     }
+
+    static patch(endpoint, body = null) {
+        return this.request(endpoint, { method: 'PATCH', body });
+    }
 }
 
 // Servicios específicos
@@ -100,6 +104,10 @@ class PedidoService {
     static getByEstado(estado) {
         return ApiService.get(`/pedidos/estado/${estado}`);
     }
+
+    static cambiarEstado(id, estado) {
+        return ApiService.patch(`/pedidos/${id}/estado?estado=${estado}`);
+    }
 }
 
 class UsuarioService {
@@ -117,6 +125,10 @@ class UsuarioService {
 
     static update(id, usuario) {
         return ApiService.put(`/usuarios/${id}`, usuario);
+    }
+
+    static getRoles() {
+        return ApiService.get('/usuarios/roles');
     }
 }
 
@@ -173,6 +185,10 @@ class OrdenTrabajoService {
 
     static getByTecnico(idTecnico) {
         return ApiService.get(`/ordenes-trabajo/tecnico/${idTecnico}`);
+    }
+
+    static reasignarTecnico(id, idTecnico, motivo) {
+        return ApiService.patch(`/ordenes-trabajo/${id}/reasignar`, { idTecnico, motivo });
     }
 }
 
@@ -272,6 +288,10 @@ class TecnicoService {
     static delete(id) {
         return ApiService.delete(`/tecnicos/${id}`);
     }
+
+    static getByCategoria(idCategoria) {
+        return ApiService.get(`/tecnicos/por-categoria/${idCategoria}`);
+    }
 }
 
 class ServicioCatalogoService {
@@ -305,6 +325,20 @@ class ServicioCatalogoService {
 
     static getHistorico(id) {
         return ApiService.get(`/servicios-catalogo/${id}/historico-precios`);
+    }
+}
+
+class ProveedorService {
+    static getAll() {
+        return ApiService.get('/proveedores');
+    }
+
+    static getActivos() {
+        return ApiService.get('/proveedores/activos');
+    }
+
+    static getById(id) {
+        return ApiService.get(`/proveedores/${id}`);
     }
 }
 

@@ -137,7 +137,7 @@
 
                         <div class="row">
                             <!-- Pedido -->
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6 mb-3" id="divPedido">
                                 <label for="idPedido" class="form-label">
                                     <i class="fas fa-clipboard-list"></i> Pedido *
                                 </label>
@@ -147,7 +147,7 @@
                             </div>
 
                             <!-- Presupuesto Aceptado -->
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6 mb-3" id="divPresupuesto">
                                 <label for="presupuestoInfo" class="form-label">
                                     <i class="fas fa-file-invoice"></i> Presupuesto Aceptado
                                 </label>
@@ -400,10 +400,6 @@
                             <label class="form-label fw-bold">Costo Mano de Obra</label>
                             <input type="text" class="form-control bg-light" id="revCostoManoObra" readonly>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Presupuesto Inicial</label>
-                            <input type="text" class="form-control bg-light" id="revPresupuestoInicial" readonly>
-                        </div>
                     </div>
 
                     <!-- Revisión del Admin (editable) -->
@@ -420,10 +416,6 @@
                             <input type="number" class="form-control" id="revPresupuestoFinal"
                                    step="1000" min="0" required>
                             <small class="text-muted">Ajuste el presupuesto final si es necesario</small>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Diferencia con Presupuesto Inicial</label>
-                            <input type="text" class="form-control bg-warning bg-opacity-10" id="revDiferencia" readonly>
                         </div>
                         <div class="col-12">
                             <label for="revJustificacionAjuste" class="form-label fw-bold">

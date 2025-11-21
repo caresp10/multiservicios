@@ -275,158 +275,11 @@
                                             </div>
                                         </div>
 
-                                        <!-- Repuestos y Costos Adicionales para Facturar -->
-                                        <div class="card mb-3">
-                                            <div class="card-header bg-success bg-opacity-10">
-                                                <h6 class="mb-0"><i class="fas fa-plus-circle"></i> Agregar Items para Facturar</h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <!-- Tabs para selección de tipo de item -->
-                                                <ul class="nav nav-tabs mb-3" id="itemTabsFactura" role="tablist">
-                                                    <li class="nav-item" role="presentation">
-                                                        <button class="nav-link active" id="servicios-tab-factura" data-bs-toggle="tab"
-                                                                data-bs-target="#servicios-panel-factura" type="button" role="tab">
-                                                            <i class="fas fa-concierge-bell"></i> Servicios
-                                                        </button>
-                                                    </li>
-                                                    <li class="nav-item" role="presentation">
-                                                        <button class="nav-link" id="repuestos-tab-factura" data-bs-toggle="tab"
-                                                                data-bs-target="#repuestos-panel-factura" type="button" role="tab">
-                                                            <i class="fas fa-cogs"></i> Repuestos
-                                                        </button>
-                                                    </li>
-                                                    <li class="nav-item" role="presentation">
-                                                        <button class="nav-link" id="manual-tab-factura" data-bs-toggle="tab"
-                                                                data-bs-target="#manual-panel-factura" type="button" role="tab">
-                                                            <i class="fas fa-keyboard"></i> Manual
-                                                        </button>
-                                                    </li>
-                                                </ul>
-
-                                                <!-- Tab Content -->
-                                                <div class="tab-content" id="itemTabsContentFactura">
-                                                    <!-- Panel Servicios -->
-                                                    <div class="tab-pane fade show active" id="servicios-panel-factura" role="tabpanel">
-                                                        <div class="row g-2 align-items-end mb-3">
-                                                            <div class="col-md-4">
-                                                                <label for="selectServicioFactura" class="form-label small">Servicio</label>
-                                                                <select class="form-select" id="selectServicioFactura" onchange="seleccionarServicioFactura()">
-                                                                    <option value="">Seleccione un servicio...</option>
-                                                                </select>
-                                                            </div>
-                                                            <div class="col-md-2">
-                                                                <label for="servicioCantidadFactura" class="form-label small">Cantidad</label>
-                                                                <input type="number" class="form-control" id="servicioCantidadFactura"
-                                                                       step="0.01" min="0.01" value="1" placeholder="1">
-                                                            </div>
-                                                            <div class="col-md-2">
-                                                                <label for="servicioPrecioFactura" class="form-label small">Precio</label>
-                                                                <input type="number" class="form-control" id="servicioPrecioFactura"
-                                                                       step="0.01" min="0" placeholder="0.00" readonly>
-                                                            </div>
-                                                            <div class="col-md-2">
-                                                                <button type="button" class="btn btn-primary w-100" onclick="agregarServicioFactura()">
-                                                                    <i class="fas fa-plus"></i> Agregar
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <div class="mt-2" id="servicioInfoFactura" style="display: none;">
-                                                            <small class="text-muted">
-                                                                <i class="fas fa-info-circle"></i>
-                                                                <span id="servicioDescripcionTextFactura"></span>
-                                                            </small>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Panel Repuestos -->
-                                                    <div class="tab-pane fade" id="repuestos-panel-factura" role="tabpanel">
-                                                        <div class="row g-2 align-items-end mb-3">
-                                                            <div class="col-md-4">
-                                                                <label for="selectRepuestoFactura" class="form-label small">Repuesto</label>
-                                                                <select class="form-select" id="selectRepuestoFactura" onchange="seleccionarRepuestoFactura()">
-                                                                    <option value="">Seleccione un repuesto...</option>
-                                                                </select>
-                                                            </div>
-                                                            <div class="col-md-2">
-                                                                <label for="repuestoCantidadFactura" class="form-label small">Cantidad</label>
-                                                                <input type="number" class="form-control" id="repuestoCantidadFactura"
-                                                                       step="1" min="1" value="1" placeholder="1">
-                                                            </div>
-                                                            <div class="col-md-2">
-                                                                <label for="repuestoStockFactura" class="form-label small">Stock Disp.</label>
-                                                                <input type="text" class="form-control" id="repuestoStockFactura"
-                                                                       placeholder="-" readonly>
-                                                            </div>
-                                                            <div class="col-md-2">
-                                                                <label for="repuestoPrecioFactura" class="form-label small">Precio</label>
-                                                                <input type="number" class="form-control" id="repuestoPrecioFactura"
-                                                                       step="0.01" min="0" placeholder="0.00" readonly>
-                                                            </div>
-                                                            <div class="col-md-2">
-                                                                <button type="button" class="btn btn-info w-100" onclick="agregarRepuestoFactura()">
-                                                                    <i class="fas fa-plus"></i> Agregar
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <div class="mt-2" id="repuestoInfoFactura" style="display: none;">
-                                                            <small class="text-muted">
-                                                                <i class="fas fa-info-circle"></i>
-                                                                <span id="repuestoDescripcionTextFactura"></span>
-                                                            </small>
-                                                        </div>
-                                                        <div class="mt-2" id="repuestoAlertaFactura" style="display: none;">
-                                                            <small class="text-danger">
-                                                                <i class="fas fa-exclamation-triangle"></i>
-                                                                <span id="repuestoAlertaTextFactura"></span>
-                                                            </small>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Panel Manual -->
-                                                    <div class="tab-pane fade" id="manual-panel-factura" role="tabpanel">
-                                                        <div class="row g-2 align-items-end mb-3">
-                                                            <div class="col-md-5">
-                                                                <label class="form-label small">Descripción *</label>
-                                                                <input type="text" class="form-control" id="nuevoItemDesc" placeholder="Ej: Repuesto ABC">
-                                                            </div>
-                                                            <div class="col-md-2">
-                                                                <label class="form-label small">Cantidad *</label>
-                                                                <input type="number" class="form-control" id="nuevoItemCant" value="1" min="0.01" step="0.01">
-                                                            </div>
-                                                            <div class="col-md-3">
-                                                                <label class="form-label small">Precio Unitario *</label>
-                                                                <input type="number" class="form-control" id="nuevoItemPrecio" placeholder="0" min="0" step="0.01">
-                                                            </div>
-                                                            <div class="col-md-2">
-                                                                <button type="button" class="btn btn-success w-100" onclick="agregarItemFactura()">
-                                                                    <i class="fas fa-plus"></i> Agregar
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Tabla de Items Agregados -->
-                                                <div class="table-responsive">
-                                                    <table class="table table-sm table-bordered">
-                                                        <thead class="table-light">
-                                                            <tr>
-                                                                <th>Tipo</th>
-                                                                <th>Descripción</th>
-                                                                <th class="text-end">Cant.</th>
-                                                                <th class="text-end">P. Unit.</th>
-                                                                <th class="text-end">Subtotal</th>
-                                                                <th class="text-center">Acción</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody id="detItemsAdicionales">
-                                                            <tr>
-                                                                <td colspan="6" class="text-center text-muted">No hay items adicionales agregados</td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
+                                        <!-- Nota informativa sobre items -->
+                                        <div class="alert alert-info mb-3">
+                                            <i class="fas fa-info-circle"></i>
+                                            <strong>Nota:</strong> Los items a facturar provienen del presupuesto aprobado.
+                                            Si necesita agregar o modificar items, edite el presupuesto correspondiente.
                                         </div>
 
                                         <!-- Totales -->
@@ -455,11 +308,50 @@
                                                     <div class="col-md-4">
                                                         <div class="mb-2">
                                                             <label class="form-label">Forma de Pago *</label>
-                                                            <select class="form-select form-select-sm" id="formaPago" required>
+                                                            <select class="form-select form-select-sm" id="formaPago" required onchange="onFormaPagoChange()">
                                                                 <option value="EFECTIVO">Efectivo</option>
                                                                 <option value="TRANSFERENCIA">Transferencia</option>
                                                                 <option value="TARJETA">Tarjeta</option>
                                                                 <option value="CHEQUE">Cheque</option>
+                                                                <option value="CREDITO">Crédito</option>
+                                                            </select>
+                                                        </div>
+                                                        <!-- Campos adicionales para Tarjeta -->
+                                                        <div id="divDatosTarjeta" style="display: none;">
+                                                            <div class="mb-2">
+                                                                <label class="form-label">Nº Voucher/Boleta *</label>
+                                                                <input type="text" class="form-control form-control-sm" id="numeroVoucher" placeholder="Número de voucher">
+                                                            </div>
+                                                        </div>
+                                                        <!-- Campos adicionales para Transferencia -->
+                                                        <div id="divDatosTransferencia" style="display: none;">
+                                                            <div class="mb-2">
+                                                                <label class="form-label">Banco Origen *</label>
+                                                                <input type="text" class="form-control form-control-sm" id="bancoOrigen" placeholder="Nombre del banco">
+                                                            </div>
+                                                            <div class="mb-2">
+                                                                <label class="form-label">Nº Transacción *</label>
+                                                                <input type="text" class="form-control form-control-sm" id="numeroTransaccion" placeholder="Número de transacción">
+                                                            </div>
+                                                        </div>
+                                                        <!-- Campos adicionales para Cheque -->
+                                                        <div id="divDatosCheque" style="display: none;">
+                                                            <div class="mb-2">
+                                                                <label class="form-label">Banco *</label>
+                                                                <input type="text" class="form-control form-control-sm" id="bancoCheque" placeholder="Nombre del banco">
+                                                            </div>
+                                                            <div class="mb-2">
+                                                                <label class="form-label">Nº Cheque *</label>
+                                                                <input type="text" class="form-control form-control-sm" id="numeroCheque" placeholder="Número de cheque">
+                                                            </div>
+                                                        </div>
+                                                        <!-- Campos adicionales para Crédito -->
+                                                        <div class="mb-2" id="divDiasCredito" style="display: none;">
+                                                            <label class="form-label">Plazo de Crédito *</label>
+                                                            <select class="form-select form-select-sm" id="diasCredito">
+                                                                <option value="30" selected>30 días</option>
+                                                                <option value="60">60 días</option>
+                                                                <option value="90">90 días</option>
                                                             </select>
                                                         </div>
                                                         <div class="mb-2">
@@ -661,13 +553,18 @@
                 <div class="modal-body">
                     <input type="hidden" id="editIdFactura">
 
-                    <div class="mb-3">
-                        <label class="form-label">Número de Factura</label>
-                        <input type="text" class="form-control" id="editNumeroFactura" readonly>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Nota:</strong> Solo puede modificar la forma de pago y el estado de la factura.
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label"><i class="fas fa-credit-card"></i> Forma de Pago</label>
+                        <label class="form-label">Número de Factura</label>
+                        <input type="text" class="form-control" id="editNumeroFactura" readonly disabled>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><i class="fas fa-credit-card"></i> Forma de Pago *</label>
                         <select class="form-select" id="editFormaPago" required>
                             <option value="">Seleccione...</option>
                             <option value="EFECTIVO">Efectivo</option>
@@ -679,26 +576,13 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label"><i class="fas fa-tag"></i> Estado</label>
+                        <label class="form-label"><i class="fas fa-tag"></i> Estado *</label>
                         <select class="form-select" id="editEstado" required>
                             <option value="">Seleccione...</option>
                             <option value="PENDIENTE">Pendiente</option>
                             <option value="PAGADA">Pagada</option>
                             <option value="VENCIDA">Vencida</option>
                         </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Timbrado *</label>
-                        <select class="form-select" id="editTimbrado" required>
-                            <option value="">Seleccione timbrado...</option>
-                        </select>
-                        <small class="text-muted" id="editInfoTimbrado"></small>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Fecha de Vencimiento</label>
-                        <input type="date" class="form-control" id="editFechaVencimiento">
                     </div>
 
                     <div class="mb-3">

@@ -73,12 +73,12 @@ public class Factura {
     private BigDecimal total = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
     @Builder.Default
     private EstadoFactura estado = EstadoFactura.PENDIENTE;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "forma_pago")
+    @Column(name = "forma_pago", columnDefinition = "VARCHAR(20)")
     @Builder.Default
     private FormaPago formaPago = FormaPago.EFECTIVO;
     

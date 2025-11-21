@@ -71,4 +71,11 @@ public class TecnicoController {
         Tecnico tecnico = tecnicoService.obtenerPorIdUsuario(idUsuario);
         return ResponseEntity.ok(ApiResponse.success("Técnico encontrado", tecnico));
     }
+
+    @GetMapping("/por-categoria/{idCategoria}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR', 'DUENO')")
+    public ResponseEntity<ApiResponse> listarPorCategoria(@PathVariable Long idCategoria) {
+        List<Tecnico> tecnicos = tecnicoService.listarPorCategoria(idCategoria);
+        return ResponseEntity.ok(ApiResponse.success("Técnicos por categoría", tecnicos));
+    }
 }

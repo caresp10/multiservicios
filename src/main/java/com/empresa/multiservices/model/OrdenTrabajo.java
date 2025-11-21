@@ -59,11 +59,12 @@ public class OrdenTrabajo {
     private LocalDateTime fechaFinalizacion;
     
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
     @Builder.Default
     private EstadoOT estado = EstadoOT.ABIERTA;
-    
+
     @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(20)")
     @Builder.Default
     private Prioridad prioridad = Prioridad.MEDIA;
     

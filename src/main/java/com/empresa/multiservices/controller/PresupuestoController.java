@@ -65,4 +65,22 @@ public class PresupuestoController {
         List<Presupuesto> presupuestos = presupuestoService.obtenerPresupuestosAceptadosPorPedido(idPedido);
         return ResponseEntity.ok(ApiResponse.success("Presupuestos aceptados del pedido", presupuestos));
     }
+
+    @PostMapping("/verificar-vencidos")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR', 'DUENO')")
+    public ResponseEntity<ApiResponse> verificarPresupuestosVencidos() {
+        int cantidadActualizados = presupuestoService.verificarPresupuestosVencidos();
+        return ResponseEntity.ok(ApiResponse.success(
+            "Verificación completada. " + cantidadActualizados + " presupuesto(s) marcado(s) como vencido(s)",
+            cantidadActualizados));
+    }
+
+    @GetMapping("/{id}/vencido")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPCION', 'SUPERVISOR', 'DUENO')")
+    public ResponseEntity<ApiResponse> verificarSiEstaVencido(@PathVariable Long id) {
+        boolean vencido = presupuestoService.estaVencido(id);
+        return ResponseEntity.ok(ApiResponse.success(
+            vencido ? "El presupuesto está vencido" : "El presupuesto está vigente",
+            vencido));
+    }
 }

@@ -96,6 +96,47 @@ public class OrdenTrabajoService {
 
         return otRepository.save(ot);
     }
+
+    public OrdenTrabajo reasignarTecnico(Long idOt, Long idNuevoTecnico, String motivo) {
+        OrdenTrabajo ot = otRepository.findById(idOt)
+                .orElseThrow(() -> new ResourceNotFoundException("Orden de trabajo no encontrada"));
+
+        Tecnico nuevoTecnico = tecnicoRepository.findById(idNuevoTecnico)
+                .orElseThrow(() -> new ResourceNotFoundException("Técnico no encontrado"));
+
+        // Guardar información del técnico anterior en observaciones
+        String tecnicoAnterior = ot.getTecnico() != null
+            ? ot.getTecnico().getNombre() + " " + ot.getTecnico().getApellido()
+            : "Sin asignar";
+
+        String observacionReasignacion = String.format(
+            "[%s] Reasignación de %s a %s %s. Motivo: %s",
+            LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
+            tecnicoAnterior,
+            nuevoTecnico.getNombre(),
+            nuevoTecnico.getApellido(),
+            motivo != null ? motivo : "No especificado"
+        );
+
+        // Agregar a observaciones existentes
+        String observacionesActuales = ot.getObservaciones() != null ? ot.getObservaciones() : "";
+        if (!observacionesActuales.isEmpty()) {
+            observacionesActuales += "\n";
+        }
+        ot.setObservaciones(observacionesActuales + observacionReasignacion);
+
+        // Asignar nuevo técnico
+        ot.setTecnico(nuevoTecnico);
+        ot.setFechaAsignacion(LocalDateTime.now());
+
+        // Si la OT estaba en proceso, mantener ese estado; si no, poner como ASIGNADA
+        if (ot.getEstado() != EstadoOT.EN_PROCESO &&
+            ot.getEstado() != EstadoOT.ESPERANDO_REVISION) {
+            ot.setEstado(EstadoOT.ASIGNADA);
+        }
+
+        return otRepository.save(ot);
+    }
     
     public OrdenTrabajo iniciarTrabajo(Long idOt) {
         OrdenTrabajo ot = otRepository.findById(idOt)

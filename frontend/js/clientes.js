@@ -7,10 +7,6 @@ document.getElementById('userName').textContent = `${user.nombre} ${user.apellid
 document.getElementById('userRole').textContent = user.rol;
 document.getElementById('userAvatar').textContent = user.nombre.charAt(0);
 
-if (user.rol !== 'ADMIN') {
-    document.getElementById('menuUsuarios').style.display = 'none';
-}
-
 // Variables globales
 let clientes = [];
 let clienteEditando = null;

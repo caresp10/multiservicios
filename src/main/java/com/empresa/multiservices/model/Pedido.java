@@ -46,19 +46,19 @@ public class Pedido {
     private LocalDateTime fechaPedido;
     
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
     private CanalPedido canal;
-    
+
     @Column(nullable = false, columnDefinition = "TEXT")
     private String descripcion;
-    
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
     @Builder.Default
     private Prioridad prioridad = Prioridad.MEDIA;
     
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
+    @Column(length = 20, columnDefinition = "VARCHAR(20)")
     @Builder.Default
     private EstadoPedido estado = EstadoPedido.NUEVO;
         

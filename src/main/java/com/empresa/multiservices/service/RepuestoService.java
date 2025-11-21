@@ -1,7 +1,9 @@
 package com.empresa.multiservices.service;
 
 import com.empresa.multiservices.exception.ResourceNotFoundException;
+import com.empresa.multiservices.model.CategoriaServicio;
 import com.empresa.multiservices.model.Repuesto;
+import com.empresa.multiservices.repository.CategoriaServicioRepository;
 import com.empresa.multiservices.repository.RepuestoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,9 @@ public class RepuestoService {
 
     @Autowired
     private RepuestoRepository repuestoRepository;
+
+    @Autowired
+    private CategoriaServicioRepository categoriaRepository;
 
     public Repuesto crear(Repuesto repuesto) {
         // Generar código automáticamente si no se proporcionó o si está vacío
@@ -36,24 +41,30 @@ public class RepuestoService {
 
     /**
      * Genera un código automático para un repuesto basado en su categoría
-     * Formato: PREFIJO-NNN (ej: ELEC-001, MECAN-015)
+     * Formato: REP-PREFIJO-NNN (ej: REP-ELEC-001, REP-MECAN-015)
      */
     public String generarCodigoPorCategoria(Long idCategoria) {
-        // Obtener todos los repuestos de esta categoría
-        List<Repuesto> repuestosCategoria = repuestoRepository.findByCategoriaIdCategoria(idCategoria);
+        // Obtener la categoría directamente del repositorio
+        CategoriaServicio categoria = categoriaRepository.findById(idCategoria)
+                .orElseThrow(() -> new ResourceNotFoundException("Categoría no encontrada con ID: " + idCategoria));
 
         // Obtener el prefijo de la categoría
-        Repuesto primerRepuesto = repuestosCategoria.isEmpty() ? null : repuestosCategoria.get(0);
-        String prefijo = (primerRepuesto != null && primerRepuesto.getCategoria() != null && primerRepuesto.getCategoria().getPrefijo() != null)
-                ? primerRepuesto.getCategoria().getPrefijo()
-                : "REP";
+        String prefijoCategoria = (categoria.getPrefijo() != null && !categoria.getPrefijo().trim().isEmpty())
+                ? categoria.getPrefijo().toUpperCase()
+                : "GEN";
+
+        // El código completo será REP-PREFIJO-NNN
+        String prefijoCompleto = "REP-" + prefijoCategoria;
+
+        // Obtener todos los repuestos de esta categoría
+        List<Repuesto> repuestosCategoria = repuestoRepository.findByCategoriaIdCategoria(idCategoria);
 
         // Buscar el siguiente número disponible
         int maxNumero = 0;
         for (Repuesto r : repuestosCategoria) {
-            if (r.getCodigo() != null && r.getCodigo().startsWith(prefijo + "-")) {
+            if (r.getCodigo() != null && r.getCodigo().startsWith(prefijoCompleto + "-")) {
                 try {
-                    String numeroStr = r.getCodigo().substring(prefijo.length() + 1);
+                    String numeroStr = r.getCodigo().substring(prefijoCompleto.length() + 1);
                     int numero = Integer.parseInt(numeroStr);
                     if (numero > maxNumero) {
                         maxNumero = numero;
@@ -65,7 +76,7 @@ public class RepuestoService {
         }
 
         int siguienteNumero = maxNumero + 1;
-        return String.format("%s-%03d", prefijo, siguienteNumero);
+        return String.format("%s-%03d", prefijoCompleto, siguienteNumero);
     }
 
     /**
@@ -123,7 +134,6 @@ public class RepuestoService {
         repuesto.setPuntoReorden(repuestoActualizado.getPuntoReorden());
         repuesto.setUbicacion(repuestoActualizado.getUbicacion());
         repuesto.setProveedor(repuestoActualizado.getProveedor());
-        repuesto.setTelefonoProveedor(repuestoActualizado.getTelefonoProveedor());
         repuesto.setActivo(repuestoActualizado.getActivo());
 
         return repuestoRepository.save(repuesto);

@@ -6,19 +6,16 @@ document.getElementById('userName').textContent = `${user.nombre} ${user.apellid
 document.getElementById('userRole').textContent = user.rol;
 document.getElementById('userAvatar').textContent = user.nombre.charAt(0);
 
-if (user.rol !== 'ADMIN') {
-    document.getElementById('menuUsuarios').style.display = 'none';
+// Verificar acceso: solo ADMIN, SUPERVISOR, DUENO y RECEPCION pueden ver facturas
+if (!['ADMIN', 'SUPERVISOR', 'DUENO', 'RECEPCION'].includes(user.rol)) {
+    alert('No tiene permisos para acceder a las facturas');
+    window.location.href = 'dashboard.html';
 }
 
 let facturas = [];
 let ordenesTerminadas = [];
 let ordenSeleccionada = null;
 let itemsPresupuesto = []; // Items del presupuesto original
-let itemsAdicionales = []; // Items adicionales agregados manualmente
-let serviciosCatalogo = [];
-let servicioSeleccionadoFactura = null;
-let repuestosCatalogo = [];
-let repuestoSeleccionadoFactura = null;
 const modal = new bootstrap.Modal(document.getElementById('modalFactura'));
 
 document.getElementById('sidebarToggle')?.addEventListener('click', function() {
@@ -30,6 +27,70 @@ function logout() {
         AuthService.logout();
     }
 }
+
+// Manejar cambio de forma de pago
+function onFormaPagoChange() {
+    const formaPago = document.getElementById('formaPago').value;
+    const divDiasCredito = document.getElementById('divDiasCredito');
+    const divDatosCheque = document.getElementById('divDatosCheque');
+    const divDatosTarjeta = document.getElementById('divDatosTarjeta');
+    const divDatosTransferencia = document.getElementById('divDatosTransferencia');
+    const fechaVencimiento = document.getElementById('fechaVencimiento');
+
+    // Ocultar todos los campos adicionales
+    divDiasCredito.style.display = 'none';
+    divDatosCheque.style.display = 'none';
+    divDatosTarjeta.style.display = 'none';
+    divDatosTransferencia.style.display = 'none';
+
+    // Limpiar campos requeridos
+    document.getElementById('numeroCheque').required = false;
+    document.getElementById('bancoCheque').required = false;
+    document.getElementById('numeroVoucher').required = false;
+    document.getElementById('bancoOrigen').required = false;
+    document.getElementById('numeroTransaccion').required = false;
+
+    // Limpiar fecha vencimiento por defecto
+    fechaVencimiento.value = '';
+
+    if (formaPago === 'EFECTIVO') {
+        // Solo cambiar estado, no requiere campos adicionales
+    } else if (formaPago === 'TARJETA') {
+        divDatosTarjeta.style.display = 'block';
+        document.getElementById('numeroVoucher').required = true;
+    } else if (formaPago === 'TRANSFERENCIA') {
+        divDatosTransferencia.style.display = 'block';
+        document.getElementById('bancoOrigen').required = true;
+        document.getElementById('numeroTransaccion').required = true;
+    } else if (formaPago === 'CHEQUE') {
+        divDatosCheque.style.display = 'block';
+        document.getElementById('bancoCheque').required = true;
+        document.getElementById('numeroCheque').required = true;
+    } else if (formaPago === 'CREDITO') {
+        divDiasCredito.style.display = 'block';
+        // Calcular fecha de vencimiento automáticamente
+        calcularFechaVencimientoCredito();
+    }
+}
+
+// Calcular fecha de vencimiento para crédito
+function calcularFechaVencimientoCredito() {
+    const diasCredito = parseInt(document.getElementById('diasCredito').value) || 30;
+    const fechaVencimiento = document.getElementById('fechaVencimiento');
+
+    const fecha = new Date();
+    fecha.setDate(fecha.getDate() + diasCredito);
+
+    // Formato YYYY-MM-DD para input date
+    const year = fecha.getFullYear();
+    const month = String(fecha.getMonth() + 1).padStart(2, '0');
+    const day = String(fecha.getDate()).padStart(2, '0');
+
+    fechaVencimiento.value = `${year}-${month}-${day}`;
+}
+
+// Event listener para cambio de días de crédito
+document.getElementById('diasCredito')?.addEventListener('change', calcularFechaVencimientoCredito);
 
 // Función para sanitizar strings y evitar problemas con JSON
 function sanitizeString(str) {
@@ -656,13 +717,8 @@ async function calcularTotales() {
         if (datosResponse.success && datosResponse.data) {
             const datos = datosResponse.data;
 
-            // Subtotal del presupuesto original
+            // Subtotal del presupuesto original (ya no hay items adicionales)
             let subtotal = parseFloat(datos.subtotal) || 0;
-
-            // Sumar items adicionales
-            itemsAdicionales.forEach(item => {
-                subtotal += parseFloat(item.subtotal);
-            });
 
             // Calcular IVA (10%)
             const iva = subtotal * 0.10;
@@ -691,16 +747,36 @@ async function guardarFactura() {
         return;
     }
 
-    // CALCULAR TOTALES DIRECTAMENTE DESDE LOS ITEMS (no leer del DOM)
+    const formaPago = document.getElementById('formaPago').value;
+
+    // Validar datos según forma de pago
+    if (formaPago === 'TARJETA') {
+        const numeroVoucher = document.getElementById('numeroVoucher').value.trim();
+        if (!numeroVoucher) {
+            alert('Debe ingresar el número de voucher/boleta');
+            return;
+        }
+    } else if (formaPago === 'TRANSFERENCIA') {
+        const bancoOrigen = document.getElementById('bancoOrigen').value.trim();
+        const numeroTransaccion = document.getElementById('numeroTransaccion').value.trim();
+        if (!bancoOrigen || !numeroTransaccion) {
+            alert('Debe completar los datos de la transferencia');
+            return;
+        }
+    } else if (formaPago === 'CHEQUE') {
+        const bancoCheque = document.getElementById('bancoCheque').value.trim();
+        const numeroCheque = document.getElementById('numeroCheque').value.trim();
+        if (!bancoCheque || !numeroCheque) {
+            alert('Debe completar los datos del cheque');
+            return;
+        }
+    }
+
+    // CALCULAR TOTALES DIRECTAMENTE DESDE LOS ITEMS DEL PRESUPUESTO
     let subtotal = 0;
 
-    // Sumar items del presupuesto
+    // Sumar items del presupuesto (ya no hay items adicionales)
     itemsPresupuesto.forEach(item => {
-        subtotal += parseFloat(item.subtotal) || 0;
-    });
-
-    // Sumar items adicionales
-    itemsAdicionales.forEach(item => {
         subtotal += parseFloat(item.subtotal) || 0;
     });
 
@@ -708,7 +784,6 @@ async function guardarFactura() {
     const iva = subtotal * 0.10;
     const total = subtotal + iva;
 
-    // Combinar TODOS los items: presupuesto + adicionales
     // Convertir items del presupuesto al formato de FacturaItem
     const todosLosItems = [];
 
@@ -732,29 +807,28 @@ async function guardarFactura() {
         todosLosItems.push(facturaItem);
     });
 
-    // Agregar items adicionales
-    itemsAdicionales.forEach(item => {
-        const facturaItem = {
-            tipoItem: item.tipoItem || 'OTRO',
-            descripcion: sanitizeString(item.descripcion),
-            cantidad: parseFloat(item.cantidad) || 1,
-            precioUnitario: parseFloat(item.precioUnitario) || 0,
-            subtotal: parseFloat(item.subtotal) || 0
-        };
-
-        // Agregar referencias según el tipo
-        if (item.tipoItem === 'SERVICIO' && item.idServicio) {
-            facturaItem.servicio = { idServicio: item.idServicio };
-        } else if (item.tipoItem === 'REPUESTO' && item.idRepuesto) {
-            facturaItem.repuesto = { idRepuesto: item.idRepuesto };
-        }
-
-        todosLosItems.push(facturaItem);
-    });
-
     const timbradoSelect = document.getElementById('timbrado');
     const timbradoId = timbradoSelect.value ? parseInt(timbradoSelect.value) : null;
     const timbradoNumero = timbradoSelect.selectedOptions[0]?.dataset.numero || null;
+
+    // Construir observaciones con datos de pago según la forma de pago
+    let observaciones = sanitizeString(document.getElementById('observaciones').value) || '';
+    let datosPago = '';
+
+    if (formaPago === 'TARJETA') {
+        datosPago = `TARJETA - Voucher/Boleta Nº: ${document.getElementById('numeroVoucher').value}`;
+    } else if (formaPago === 'TRANSFERENCIA') {
+        datosPago = `TRANSFERENCIA - Banco: ${document.getElementById('bancoOrigen').value} | Transacción Nº: ${document.getElementById('numeroTransaccion').value}`;
+    } else if (formaPago === 'CHEQUE') {
+        datosPago = `CHEQUE - Banco: ${document.getElementById('bancoCheque').value} | Cheque Nº: ${document.getElementById('numeroCheque').value}`;
+    } else if (formaPago === 'CREDITO') {
+        const diasCredito = document.getElementById('diasCredito').value;
+        datosPago = `CRÉDITO - Plazo: ${diasCredito} días`;
+    }
+
+    if (datosPago) {
+        observaciones = observaciones ? `${observaciones} | ${datosPago}` : datosPago;
+    }
 
     const facturaData = {
         cliente: {
@@ -766,7 +840,7 @@ async function guardarFactura() {
         pedido: {
             idPedido: parseInt(document.getElementById('idPedido').value)
         },
-        formaPago: document.getElementById('formaPago').value,
+        formaPago: formaPago,
         estado: document.getElementById('estado').value,
         subtotal: subtotal,
         descuento: parseFloat(document.getElementById('descuento').value) || 0,
@@ -775,8 +849,8 @@ async function guardarFactura() {
         timbrado: timbradoNumero,
         timbradoObj: timbradoId ? { idTimbrado: timbradoId } : null,
         fechaVencimiento: document.getElementById('fechaVencimiento').value || null,
-        observaciones: sanitizeString(document.getElementById('observaciones').value) || null,
-        items: todosLosItems  // ← CAMBIADO: Ahora se envían TODOS los items
+        observaciones: observaciones || null,
+        items: todosLosItems
     };
 
     // Validar que el JSON se puede serializar antes de enviar
@@ -792,12 +866,13 @@ async function guardarFactura() {
     // LOG: Ver qué se está enviando al backend
     console.log('=== DATOS DE FACTURA A ENVIAR ===');
     console.log('Items del presupuesto:', itemsPresupuesto.length);
-    console.log('Items adicionales:', itemsAdicionales.length);
     console.log('Total items a enviar:', todosLosItems.length);
     console.log('Items:', todosLosItems);
     console.log('Subtotal:', facturaData.subtotal);
     console.log('IVA:', facturaData.iva);
     console.log('Total:', facturaData.total);
+    console.log('Forma de pago:', facturaData.formaPago);
+    console.log('Fecha vencimiento:', facturaData.fechaVencimiento);
     console.log('FacturaData completo:', facturaData);
 
     try {
@@ -965,7 +1040,7 @@ async function verDetallesFactura(id) {
     }
 }
 
-// Exportar factura a PDF
+// Exportar factura a PDF con formato mejorado
 async function exportarPDF(id) {
     try {
         const response = await FacturaService.getById(id);
@@ -973,112 +1048,257 @@ async function exportarPDF(id) {
         if (response.success && response.data) {
             const factura = response.data;
 
-            // Crear ventana de impresión
-            const printWindow = window.open('', '_blank');
+            // Crear ventana de impresión con tamaño reducido (similar a presupuestos)
+            const width = 800;
+            const height = 600;
+            const left = (screen.width - width) / 2;
+            const top = (screen.height - height) / 2;
+            const printWindow = window.open('', '_blank', `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`);
             printWindow.document.write(`
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <title>Factura ${factura.numeroFactura}</title>
-                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
                     <style>
                         @media print {
                             .no-print { display: none; }
                         }
-                        body { padding: 20px; }
-                        .factura-header { border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
-                        .factura-footer { border-top: 2px solid #000; margin-top: 20px; padding-top: 10px; }
+                        body {
+                            font-family: Arial, sans-serif;
+                            padding: 20px;
+                            font-size: 12px;
+                        }
+                        .header {
+                            text-align: center;
+                            margin-bottom: 20px;
+                            border-bottom: 2px solid #dc3545;
+                            padding-bottom: 15px;
+                        }
+                        .header h2 {
+                            margin: 0;
+                            color: #dc3545;
+                        }
+                        .titulo-documento {
+                            text-align: center;
+                            margin-bottom: 20px;
+                        }
+                        .titulo-documento h3 {
+                            margin: 0;
+                            background: #f8f9fa;
+                            padding: 10px;
+                            border-radius: 5px;
+                        }
+                        .info-container {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-bottom: 20px;
+                        }
+                        .info-container > div {
+                            flex: 1;
+                        }
+                        .info-container h5 {
+                            color: #dc3545;
+                            margin-bottom: 10px;
+                        }
+                        .info-container p {
+                            margin: 3px 0;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 20px;
+                        }
+                        th {
+                            background: #dc3545;
+                            color: white;
+                            padding: 8px;
+                            text-align: left;
+                            border: 1px solid #ddd;
+                        }
+                        td {
+                            padding: 6px 8px;
+                            border: 1px solid #ddd;
+                        }
+                        .text-end { text-align: right; }
+                        .text-center { text-align: center; }
+                        .totales-container {
+                            display: flex;
+                            justify-content: flex-end;
+                            margin-bottom: 20px;
+                        }
+                        .totales-box {
+                            width: 300px;
+                            background: #f8f9fa;
+                            padding: 15px;
+                            border-radius: 5px;
+                        }
+                        .totales-box .row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-bottom: 5px;
+                        }
+                        .totales-box .total-final {
+                            font-size: 1.2em;
+                            font-weight: bold;
+                            border-top: 2px solid #dc3545;
+                            padding-top: 10px;
+                            margin-top: 10px;
+                        }
+                        .total-final span:last-child {
+                            color: #dc3545;
+                        }
+                        .info-adicional {
+                            margin-bottom: 15px;
+                        }
+                        .info-adicional h5 {
+                            color: #dc3545;
+                            margin-bottom: 10px;
+                        }
+                        .info-adicional p {
+                            background: #f8f9fa;
+                            padding: 10px;
+                            border-radius: 5px;
+                            margin: 0;
+                        }
+                        .footer {
+                            text-align: center;
+                            margin-top: 30px;
+                            padding-top: 15px;
+                            border-top: 1px solid #ddd;
+                            color: #666;
+                            font-size: 11px;
+                        }
+                        .badge {
+                            padding: 2px 8px;
+                            border-radius: 3px;
+                            color: white;
+                            font-size: 10px;
+                        }
+                        .badge-servicio { background: #007bff; }
+                        .badge-repuesto { background: #17a2b8; }
+                        .estado-badge {
+                            padding: 2px 8px;
+                            border-radius: 3px;
+                            color: white;
+                        }
+                        .no-print {
+                            text-align: center;
+                            margin-top: 20px;
+                        }
+                        .no-print button {
+                            padding: 10px 20px;
+                            margin: 0 5px;
+                            cursor: pointer;
+                        }
                     </style>
                 </head>
                 <body>
-                    <div class="container">
-                        <div class="factura-header">
-                            <div class="row">
-                                <div class="col-6">
-                                    <h2>FACTURA</h2>
-                                    <p><strong>Nº:</strong> ${factura.numeroFactura}</p>
-                                    <p><strong>Fecha:</strong> ${formatDate(factura.fechaEmision)}</p>
-                                    <p><strong>Timbrado:</strong> ${factura.timbradoObj ? `${factura.timbradoObj.numero} (${factura.timbradoObj.establecimiento}-${factura.timbradoObj.puntoExpedicion})` : (factura.timbrado || 'N/A')}</p>
-                                    <p><strong>Válido hasta:</strong> ${factura.timbradoObj ? formatDate(factura.timbradoObj.fechaVencimiento) : (factura.fechaVencimiento ? formatDate(factura.fechaVencimiento) : 'N/A')}</p>
-                                </div>
-                                <div class="col-6 text-end">
-                                    <h4>MULTISERVICIOS</h4>
-                                    <p>RUC: XXXXXXXXX-X</p>
-                                    <p>Dirección comercial</p>
-                                    <p>Tel: XXX-XXXX</p>
-                                </div>
-                            </div>
-                        </div>
+                    <!-- Encabezado -->
+                    <div class="header">
+                        <h2>MULTISERVICIOS</h2>
+                        <p style="margin: 5px 0; color: #666;">Sistema de Gestión de Servicios</p>
+                    </div>
 
-                        <div class="mb-4">
-                            <h5>Cliente</h5>
-                            <p><strong>Nombre:</strong> ${factura.cliente?.nombre || 'N/A'} ${factura.cliente?.apellido || ''}</p>
-                            <p><strong>Documento:</strong> ${factura.cliente?.documento || 'N/A'}</p>
-                            <p><strong>Dirección:</strong> ${factura.cliente?.direccion || 'N/A'}</p>
+                    <!-- Título del documento -->
+                    <div class="titulo-documento">
+                        <h3>FACTURA N° ${factura.numeroFactura}</h3>
+                    </div>
+
+                    <!-- Información del cliente y factura -->
+                    <div class="info-container">
+                        <div style="padding-right: 10px;">
+                            <h5>Datos del Cliente</h5>
+                            <p><strong>Nombre:</strong> ${factura.cliente?.nombre || ''} ${factura.cliente?.apellido || ''}</p>
+                            <p><strong>RUC/CI:</strong> ${factura.cliente?.rucCi || factura.cliente?.documento || 'N/A'}</p>
                             <p><strong>Teléfono:</strong> ${factura.cliente?.telefono || 'N/A'}</p>
+                            <p><strong>Dirección:</strong> ${factura.cliente?.direccion || 'N/A'}</p>
                         </div>
+                        <div style="padding-left: 10px; text-align: right;">
+                            <h5>Datos de la Factura</h5>
+                            <p><strong>Fecha:</strong> ${formatDate(factura.fechaEmision)}</p>
+                            <p><strong>Timbrado:</strong> ${factura.timbradoObj ? factura.timbradoObj.numero : (factura.timbrado || 'N/A')}</p>
+                            <p><strong>Vencimiento:</strong> ${factura.timbradoObj ? formatDate(factura.timbradoObj.fechaVencimiento) : (factura.fechaVencimiento ? formatDate(factura.fechaVencimiento) : 'N/A')}</p>
+                            <p>
+                                <strong>Estado:</strong>
+                                <span class="estado-badge" style="background: ${getEstadoColorHex(factura.estado)};">
+                                    ${formatEstado(factura.estado)}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
 
-                        <table class="table table-bordered">
-                            <thead class="table-light">
+                    <!-- Tabla de Items -->
+                    <div>
+                        <h5 style="color: #dc3545; margin-bottom: 10px;">Detalle de Items</h5>
+                        <table>
+                            <thead>
                                 <tr>
                                     <th>Descripción</th>
-                                    <th class="text-end">Cantidad</th>
-                                    <th class="text-end">Precio Unit.</th>
-                                    <th class="text-end">Subtotal</th>
+                                    <th class="text-center" style="width: 80px;">Cant.</th>
+                                    <th class="text-end" style="width: 100px;">P. Unit.</th>
+                                    <th class="text-end" style="width: 100px;">Subtotal</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${factura.items && factura.items.length > 0 ? factura.items.map(item => `
                                     <tr>
-                                        <td>${item.descripcion}</td>
-                                        <td class="text-end">${formatNumber(item.cantidad)}</td>
+                                        <td>${getTipoItemBadgeHTML(item.tipoItem)} ${item.descripcion}</td>
+                                        <td class="text-center">${formatNumber(item.cantidad)}</td>
                                         <td class="text-end">${formatMoney(item.precioUnitario)}</td>
-                                        <td class="text-end">${formatMoney(item.subtotal)}</td>
+                                        <td class="text-end"><strong>${formatMoney(item.subtotal)}</strong></td>
                                     </tr>
                                 `).join('') : '<tr><td colspan="4" class="text-center">No hay items</td></tr>'}
                             </tbody>
                         </table>
+                    </div>
 
-                        <div class="factura-footer">
+                    <!-- Totales -->
+                    <div class="totales-container">
+                        <div class="totales-box">
                             <div class="row">
-                                <div class="col-6">
-                                    <p><strong>Forma de Pago:</strong> ${factura.formaPago || 'N/A'}</p>
-                                    <p><strong>Estado:</strong> ${formatEstado(factura.estado)}</p>
-                                    ${factura.observaciones ? `<p><strong>Observaciones:</strong> ${factura.observaciones}</p>` : ''}
-                                </div>
-                                <div class="col-6">
-                                    <table class="table table-sm">
-                                        <tr>
-                                            <td class="text-end"><strong>Subtotal:</strong></td>
-                                            <td class="text-end">${formatMoney(factura.subtotal)}</td>
-                                        </tr>
-                                        ${factura.descuento > 0 ? `
-                                        <tr>
-                                            <td class="text-end"><strong>Descuento:</strong></td>
-                                            <td class="text-end">${formatMoney(factura.descuento)}</td>
-                                        </tr>
-                                        ` : ''}
-                                        <tr>
-                                            <td class="text-end"><strong>IVA (10%):</strong></td>
-                                            <td class="text-end">${formatMoney(factura.iva)}</td>
-                                        </tr>
-                                        <tr class="table-primary">
-                                            <td class="text-end"><strong>TOTAL:</strong></td>
-                                            <td class="text-end"><strong>${formatMoney(factura.total)}</strong></td>
-                                        </tr>
-                                    </table>
-                                </div>
+                                <span>Subtotal:</span>
+                                <span>${formatMoney(factura.subtotal)}</span>
+                            </div>
+                            ${factura.descuento > 0 ? `
+                            <div class="row" style="color: #dc3545;">
+                                <span>Descuento:</span>
+                                <span>-${formatMoney(factura.descuento)}</span>
+                            </div>
+                            ` : ''}
+                            <div class="row">
+                                <span>IVA (10%):</span>
+                                <span>${formatMoney(factura.iva)}</span>
+                            </div>
+                            <div class="row total-final">
+                                <span>TOTAL:</span>
+                                <span>${formatMoney(factura.total)}</span>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="text-center mt-4 no-print">
-                            <button class="btn btn-primary" onclick="window.print()">
-                                <i class="fas fa-print"></i> Imprimir / Guardar como PDF
-                            </button>
-                            <button class="btn btn-secondary" onclick="window.close()">
-                                <i class="fas fa-times"></i> Cerrar
-                            </button>
-                        </div>
+                    <!-- Forma de Pago -->
+                    <div class="info-adicional">
+                        <h5>Forma de Pago</h5>
+                        <p>${factura.formaPago || 'N/A'}</p>
+                    </div>
+
+                    <!-- Observaciones -->
+                    ${factura.observaciones ? `
+                    <div class="info-adicional">
+                        <h5>Observaciones</h5>
+                        <p>${factura.observaciones}</p>
+                    </div>
+                    ` : ''}
+
+                    <!-- Pie de página -->
+                    <div class="footer">
+                        <p style="margin: 0;">Gracias por su preferencia</p>
+                        <p style="margin: 5px 0;">Para consultas comunicarse al teléfono: (XXX) XXX-XXXX</p>
+                    </div>
+
+                    <div class="no-print">
+                        <button onclick="window.print()">Imprimir / Guardar como PDF</button>
+                        <button onclick="window.close()">Cerrar</button>
                     </div>
                 </body>
                 </html>
@@ -1089,6 +1309,27 @@ async function exportarPDF(id) {
         console.error('Error exportando PDF:', error);
         alert('Error al exportar la factura a PDF');
     }
+}
+
+// Obtener color hexadecimal para el estado
+function getEstadoColorHex(estado) {
+    const colors = {
+        'PENDIENTE': '#ffc107',
+        'PAGADA': '#28a745',
+        'VENCIDA': '#dc3545',
+        'ANULADA': '#6c757d'
+    };
+    return colors[estado] || '#6c757d';
+}
+
+// Badge HTML para tipo de item (sin Font Awesome para PDF)
+function getTipoItemBadgeHTML(tipoItem) {
+    const badges = {
+        'SERVICIO': '<span class="badge badge-servicio">Servicio</span>',
+        'REPUESTO': '<span class="badge badge-repuesto">Repuesto</span>',
+        'OTRO': '<span class="badge" style="background: #6c757d;">Manual</span>'
+    };
+    return badges[tipoItem] || '';
 }
 
 // Exportar factura en formato ticket 80mm
@@ -1575,37 +1816,21 @@ let facturaActual = null;
 async function abrirModalEditar() {
     if (!facturaActual) return;
 
-    // Cargar timbrados primero
-    await cargarTimbrados();
-
     document.getElementById('editIdFactura').value = facturaActual.idFactura;
     document.getElementById('editNumeroFactura').value = facturaActual.numeroFactura;
     document.getElementById('editFormaPago').value = facturaActual.formaPago || '';
     document.getElementById('editEstado').value = facturaActual.estado || '';
-
-    // Setear el timbrado por ID si existe la relación
-    if (facturaActual.timbradoObj && facturaActual.timbradoObj.idTimbrado) {
-        document.getElementById('editTimbrado').value = facturaActual.timbradoObj.idTimbrado;
-        // Trigger del evento change para mostrar info
-        document.getElementById('editTimbrado').dispatchEvent(new Event('change'));
-    }
-
-    document.getElementById('editFechaVencimiento').value = facturaActual.fechaVencimiento || '';
     document.getElementById('editObservaciones').value = facturaActual.observaciones || '';
 
     modalDetallesFactura.hide();
     modalEditarFactura.show();
 }
 
-// Guardar edición de factura
+// Guardar edición de factura (solo forma de pago y estado)
 async function guardarEdicionFactura() {
     const id = document.getElementById('editIdFactura').value;
     const formaPago = document.getElementById('editFormaPago').value;
     const estado = document.getElementById('editEstado').value;
-    const timbradoSelect = document.getElementById('editTimbrado');
-    const timbradoId = timbradoSelect.value ? parseInt(timbradoSelect.value) : null;
-    const timbradoNumero = timbradoSelect.selectedOptions[0]?.dataset.numero || null;
-    const fechaVencimiento = document.getElementById('editFechaVencimiento').value;
     const observaciones = document.getElementById('editObservaciones').value;
 
     if (!formaPago || !estado) {
@@ -1614,12 +1839,10 @@ async function guardarEdicionFactura() {
     }
 
     try {
+        // Solo enviar campos editables
         const facturaData = {
             formaPago: formaPago,
             estado: estado,
-            timbrado: timbradoNumero,
-            timbradoObj: timbradoId ? { idTimbrado: timbradoId } : null,
-            fechaVencimiento: fechaVencimiento || null,
             observaciones: observaciones || null
         };
 

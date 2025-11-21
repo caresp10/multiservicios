@@ -75,11 +75,10 @@ public class Repuesto {
     @Column(length = 100)
     private String ubicacion;
 
-    @Column(length = 100)
-    private String proveedor;
-
-    @Column(name = "telefono_proveedor", length = 20)
-    private String telefonoProveedor;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_proveedor")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Proveedor proveedor;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "unidad_medida", length = 20)

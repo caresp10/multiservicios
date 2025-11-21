@@ -6,8 +6,10 @@ document.getElementById('userName').textContent = `${user.nombre} ${user.apellid
 document.getElementById('userRole').textContent = user.rol;
 document.getElementById('userAvatar').textContent = user.nombre.charAt(0);
 
-if (user.rol !== 'ADMIN') {
-    document.getElementById('menuUsuarios').style.display = 'none';
+// Verificar acceso: solo ADMIN, SUPERVISOR y DUENO pueden ver reportes
+if (!['ADMIN', 'SUPERVISOR', 'DUENO'].includes(user.rol)) {
+    alert('No tiene permisos para acceder a los reportes');
+    window.location.href = 'dashboard.html';
 }
 
 document.getElementById('sidebarToggle')?.addEventListener('click', function() {
@@ -297,10 +299,10 @@ async function cargarReportesStock() {
     try {
         // Cargar stock bajo y stock crítico en paralelo
         const [stockBajoRes, stockCriticoRes] = await Promise.all([
-            fetch(`${API_URL}/repuestos/stock-bajo`, {
+            fetch(`${CONFIG.API_URL}/repuestos/stock-bajo`, {
                 headers: { 'Authorization': `Bearer ${AuthService.getToken()}` }
             }),
-            fetch(`${API_URL}/repuestos/sin-stock`, {
+            fetch(`${CONFIG.API_URL}/repuestos/sin-stock`, {
                 headers: { 'Authorization': `Bearer ${AuthService.getToken()}` }
             })
         ]);
