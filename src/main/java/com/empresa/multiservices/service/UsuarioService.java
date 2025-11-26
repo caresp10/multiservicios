@@ -48,17 +48,23 @@ public class UsuarioService {
     public Usuario actualizar(Long id, UsuarioRequest request) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
-        
+
         usuario.setNombre(request.getNombre());
         usuario.setApellido(request.getApellido());
         usuario.setEmail(request.getEmail());
         usuario.setTelefono(request.getTelefono());
+        usuario.setUsername(request.getUsername());
         usuario.setRol(request.getRol());
-        
+
+        // Actualizar estado activo si se proporciona
+        if (request.getActivo() != null) {
+            usuario.setActivo(request.getActivo());
+        }
+
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             usuario.setPassword(passwordEncoder.encode(request.getPassword()));
         }
-        
+
         return usuarioRepository.save(usuario);
     }
     
@@ -78,7 +84,11 @@ public class UsuarioService {
     public List<Usuario> listarPorRol(Rol rol) {
         return usuarioRepository.findByRol(rol);
     }
-    
+
+    public Usuario buscarPorUsername(String username) {
+        return usuarioRepository.findByUsername(username).orElse(null);
+    }
+
     public void eliminar(Long id) {
         Usuario usuario = obtenerPorId(id);
         usuario.setActivo(false);

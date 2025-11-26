@@ -77,6 +77,9 @@ function renderPedidos(data) {
                 }">${pedido.prioridad}</span>
             </td>
             <td>
+                ${pedido.estado === 'COMPLETADO' || pedido.estado === 'CANCELADO' ? `
+                    <span class="badge bg-${getEstadoClass(pedido.estado)}">${formatEstado(pedido.estado)}</span>
+                ` : `
                 <div class="dropdown">
                     <button class="btn btn-sm btn-${getEstadoClass(pedido.estado)} dropdown-toggle"
                             type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -98,15 +101,16 @@ function renderPedidos(data) {
                                <i class="fas fa-circle text-danger me-2"></i>Cancelado</a></li>
                     </ul>
                 </div>
+                `}
             </td>
             <td>${formatDate(pedido.fechaPedido)}</td>
             <td>
                 <button class="btn btn-sm btn-outline-primary" onclick="editarPedido(${pedido.idPedido})"
-                        title="Editar">
+                        title="Editar" ${pedido.estado === 'COMPLETADO' || pedido.estado === 'CANCELADO' ? 'disabled' : ''}>
                     <i class="fas fa-edit"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-danger" onclick="eliminarPedido(${pedido.idPedido})"
-                        title="Eliminar">
+                        title="Eliminar" ${pedido.estado === 'COMPLETADO' || pedido.estado === 'CANCELADO' ? 'disabled' : ''}>
                     <i class="fas fa-trash"></i>
                 </button>
             </td>

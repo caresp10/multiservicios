@@ -12,6 +12,42 @@ if (!['ADMIN', 'SUPERVISOR', 'DUENO'].includes(user.rol)) {
     window.location.href = 'dashboard.html';
 }
 
+// Ajustar vista para SUPERVISOR (solo reportes de OT por técnicos)
+function ajustarVistaParaSupervisor() {
+    if (user.rol === 'SUPERVISOR') {
+        // Ocultar pestañas de Stock y Ventas
+        const stockTab = document.getElementById('stock-tab');
+        const ventasTab = document.getElementById('ventas-tab');
+        if (stockTab) stockTab.parentElement.style.display = 'none';
+        if (ventasTab) ventasTab.parentElement.style.display = 'none';
+
+        // Ocultar cards de facturación en resumen general
+        const totalFacturadoCard = document.getElementById('totalFacturado')?.closest('.col-md-3');
+        if (totalFacturadoCard) totalFacturadoCard.style.display = 'none';
+
+        // Ocultar gráfico de facturación mensual
+        const chartFacturacionContainer = document.getElementById('chartFacturacionMensual')?.closest('.col-md-6');
+        if (chartFacturacionContainer) chartFacturacionContainer.style.display = 'none';
+
+        // Expandir gráfico de estados de pedidos
+        const chartPedidosContainer = document.getElementById('chartEstadosPedidos')?.closest('.col-md-6');
+        if (chartPedidosContainer) {
+            chartPedidosContainer.classList.remove('col-md-6');
+            chartPedidosContainer.classList.add('col-md-12');
+        }
+
+        // Ocultar sección de facturas por estado
+        const facturasEstadoTable = document.getElementById('facturasEstadoTable')?.closest('.table-card');
+        if (facturasEstadoTable) facturasEstadoTable.style.display = 'none';
+
+        // Cambiar título de la página
+        const pageTitle = document.querySelector('.page-header h1');
+        if (pageTitle) {
+            pageTitle.innerHTML = '<i class="fas fa-chart-bar"></i> Reportes de Órdenes de Trabajo';
+        }
+    }
+}
+
 document.getElementById('sidebarToggle')?.addEventListener('click', function() {
     document.getElementById('sidebar').classList.toggle('active');
 });
@@ -42,6 +78,24 @@ hace30Dias.setDate(hoy.getDate() - 30);
 document.getElementById('fechaInicio').value = hace30Dias.toISOString().split('T')[0];
 document.getElementById('fechaFin').value = hoy.toISOString().split('T')[0];
 
+// Función para filtrar datos por rango de fechas
+function filtrarPorFecha(datos, campoFecha) {
+    const fechaInicio = document.getElementById('fechaInicio').value;
+    const fechaFin = document.getElementById('fechaFin').value;
+
+    if (!fechaInicio || !fechaFin) return datos;
+
+    const inicio = new Date(fechaInicio);
+    inicio.setHours(0, 0, 0, 0);
+    const fin = new Date(fechaFin);
+    fin.setHours(23, 59, 59, 999);
+
+    return datos.filter(item => {
+        const fecha = new Date(item[campoFecha]);
+        return fecha >= inicio && fecha <= fin;
+    });
+}
+
 async function cargarReportes() {
     try {
         // Cargar datos en paralelo
@@ -53,11 +107,16 @@ async function cargarReportes() {
             RepuestoService.getAll()
         ]);
 
-        const pedidos = pedidosRes.success ? pedidosRes.data : [];
-        const ordenes = ordenesRes.success ? ordenesRes.data : [];
-        const facturas = facturasRes.success ? facturasRes.data : [];
+        const pedidosRaw = pedidosRes.success ? pedidosRes.data : [];
+        const ordenesRaw = ordenesRes.success ? ordenesRes.data : [];
+        const facturasRaw = facturasRes.success ? facturasRes.data : [];
         const clientes = clientesRes.success ? clientesRes.data : [];
         const repuestos = repuestosRes.success ? repuestosRes.data : [];
+
+        // Aplicar filtro de fechas
+        const pedidos = filtrarPorFecha(pedidosRaw, 'fechaPedido');
+        const ordenes = filtrarPorFecha(ordenesRaw, 'fechaCreacion');
+        const facturas = filtrarPorFecha(facturasRaw, 'fechaEmision');
 
         // TAB 1: Resumen General
         actualizarEstadisticasGenerales(pedidos, ordenes, facturas);
@@ -105,9 +164,9 @@ function actualizarEstadisticasGenerales(pedidos, ordenes, facturas) {
     ).length;
     document.getElementById('ordenesActivas').textContent = activas;
 
-    // Total facturado
+    // Total facturado (PAGADA y PENDIENTE, excluyendo ANULADA)
     const totalFacturado = facturas
-        .filter(f => f.estado === 'PAGADA')
+        .filter(f => f.estado === 'PAGADA' || f.estado === 'PENDIENTE')
         .reduce((sum, f) => sum + (f.total || 0), 0);
     document.getElementById('totalFacturado').textContent = formatMoney(totalFacturado);
 }
@@ -254,7 +313,10 @@ function formatEstadoOrden(estado) {
         'ABIERTA': 'Abierta',
         'ASIGNADA': 'Asignada',
         'EN_PROCESO': 'En Proceso',
+        'ESPERANDO_REVISION': 'Esperando Revisión',
+        'DEVUELTA_A_TECNICO': 'Devuelta a Técnico',
         'TERMINADA': 'Terminada',
+        'FACTURADA': 'Facturada',
         'CANCELADA': 'Cancelada'
     };
     return estados[estado] || estado;
@@ -265,7 +327,10 @@ function getEstadoOrdenClass(estado) {
         'ABIERTA': 'nuevo',
         'ASIGNADA': 'en-proceso',
         'EN_PROCESO': 'en-proceso',
+        'ESPERANDO_REVISION': 'pendiente',
+        'DEVUELTA_A_TECNICO': 'cancelado',
         'TERMINADA': 'completado',
+        'FACTURADA': 'completado',
         'CANCELADA': 'cancelado'
     };
     return classes[estado] || 'nuevo';
@@ -421,8 +486,11 @@ function renderAnalisisMargenes(repuestos) {
 // ========================================
 
 function renderReportesVentas(facturas) {
-    // Filtrar solo facturas PAGADAS para análisis de ventas
-    const facturasPagadas = facturas.filter(f => f.estado === 'PAGADA');
+    // Filtrar facturas válidas para análisis de ventas (excluyendo ANULADA)
+    const facturasValidas = facturas.filter(f => f.estado !== 'ANULADA');
+
+    // Calcular el total real facturado directamente desde las facturas
+    const totalRealFacturado = facturasValidas.reduce((sum, f) => sum + (parseFloat(f.total) || 0), 0);
 
     // Analizar items de las facturas
     const serviciosVendidos = {};
@@ -432,15 +500,35 @@ function renderReportesVentas(facturas) {
     let totalServicios = 0;
     let totalRepuestos = 0;
 
-    facturasPagadas.forEach(factura => {
+    facturasValidas.forEach(factura => {
         if (factura.items && Array.isArray(factura.items)) {
             factura.items.forEach(item => {
-                const subtotal = item.subtotal || (item.cantidad * item.precioUnitario);
+                const subtotal = parseFloat(item.subtotal) || (parseFloat(item.cantidad) * parseFloat(item.precioUnitario));
 
-                if (item.tipoItem === 'SERVICIO' && item.servicio) {
-                    const idServicio = item.servicio.idServicio;
-                    const nombreServicio = item.servicio.nombre || item.descripcion;
-                    const categoria = item.servicio.categoria?.nombre || 'Sin categoría';
+                // Determinar el tipo de item
+                // Prioridad: 1) tipoItem explícito, 2) existencia de objeto repuesto/servicio, 3) patrón en descripción
+                let esRepuesto = false;
+                let esServicio = false;
+
+                if (item.tipoItem === 'REPUESTO' || item.repuesto) {
+                    esRepuesto = true;
+                } else if (item.tipoItem === 'SERVICIO' || item.servicio) {
+                    esServicio = true;
+                } else {
+                    // Inferir por la descripción - si tiene formato "CODIGO - Nombre" probablemente es repuesto
+                    const desc = item.descripcion || '';
+                    if (/^[A-Z0-9]+-\s/.test(desc) || /repuesto|pieza|componente/i.test(desc)) {
+                        esRepuesto = true;
+                    } else {
+                        esServicio = true; // Por defecto es servicio
+                    }
+                }
+
+                if (esServicio) {
+                    // Usar datos del servicio si existe, sino usar descripción
+                    const idServicio = item.servicio?.idServicio || `desc_${item.descripcion}`;
+                    const nombreServicio = item.servicio?.nombre || item.descripcion;
+                    const categoria = item.servicio?.categoria?.nombre || 'General';
 
                     if (!serviciosVendidos[idServicio]) {
                         serviciosVendidos[idServicio] = {
@@ -450,7 +538,7 @@ function renderReportesVentas(facturas) {
                             categoria: categoria
                         };
                     }
-                    serviciosVendidos[idServicio].cantidad += item.cantidad;
+                    serviciosVendidos[idServicio].cantidad += parseFloat(item.cantidad) || 1;
                     serviciosVendidos[idServicio].total += subtotal;
                     totalServicios += subtotal;
 
@@ -458,12 +546,15 @@ function renderReportesVentas(facturas) {
                     if (!categoriaServicios[categoria]) {
                         categoriaServicios[categoria] = { cantidad: 0, total: 0 };
                     }
-                    categoriaServicios[categoria].cantidad += item.cantidad;
+                    categoriaServicios[categoria].cantidad += parseFloat(item.cantidad) || 1;
                     categoriaServicios[categoria].total += subtotal;
 
-                } else if (item.tipoItem === 'REPUESTO' && item.repuesto) {
-                    const idRepuesto = item.repuesto.idRepuesto;
-                    const nombreRepuesto = `${item.repuesto.codigo} - ${item.repuesto.nombre}`;
+                } else if (esRepuesto) {
+                    // Usar datos del repuesto si existe, sino usar descripción
+                    const idRepuesto = item.repuesto?.idRepuesto || `desc_${item.descripcion}`;
+                    const nombreRepuesto = item.repuesto
+                        ? `${item.repuesto.codigo} - ${item.repuesto.nombre}`
+                        : item.descripcion;
 
                     if (!repuestosVendidos[idRepuesto]) {
                         repuestosVendidos[idRepuesto] = {
@@ -472,7 +563,7 @@ function renderReportesVentas(facturas) {
                             total: 0
                         };
                     }
-                    repuestosVendidos[idRepuesto].cantidad += item.cantidad;
+                    repuestosVendidos[idRepuesto].cantidad += parseFloat(item.cantidad) || 1;
                     repuestosVendidos[idRepuesto].total += subtotal;
                     totalRepuestos += subtotal;
                 }
@@ -498,7 +589,8 @@ function renderReportesVentas(facturas) {
     // Actualizar resumen de facturación
     document.getElementById('totalServiciosFacturados').textContent = formatMoney(totalServicios);
     document.getElementById('totalRepuestosFacturados').textContent = formatMoney(totalRepuestos);
-    document.getElementById('totalGeneralFacturado').textContent = formatMoney(totalServicios + totalRepuestos);
+    // Usar el total real de las facturas (no la suma de items que puede omitir algunos)
+    document.getElementById('totalGeneralFacturado').textContent = formatMoney(totalRealFacturado);
 
     // Retornar datos para gráficos
     return {
@@ -874,7 +966,7 @@ function renderChartServiciosVsRepuestos(totalServicios, totalRepuestos) {
 // EXPORTAR A PDF
 // ========================================
 
-function exportarPDF() {
+async function exportarPDF() {
     // Obtener el tab activo
     const activeTab = document.querySelector('.tab-pane.active');
     const activeTabId = activeTab.id;
@@ -892,23 +984,230 @@ function exportarPDF() {
     const fechaFin = document.getElementById('fechaFin').value;
     const fechaActual = new Date().toLocaleDateString('es-PY');
 
+    // Cargar datos frescos
+    const [pedidosRes, ordenesRes, facturasRes, repuestosRes] = await Promise.all([
+        PedidoService.getAll(),
+        OrdenTrabajoService.getAll(),
+        FacturaService.getAll(),
+        RepuestoService.getAll()
+    ]);
+
+    const pedidos = filtrarPorFecha(pedidosRes.success ? pedidosRes.data : [], 'fechaPedido');
+    const ordenes = filtrarPorFecha(ordenesRes.success ? ordenesRes.data : [], 'fechaCreacion');
+    const facturas = filtrarPorFecha(facturasRes.success ? facturasRes.data : [], 'fechaEmision');
+    const repuestos = repuestosRes.success ? repuestosRes.data : [];
+
+    // Generar contenido según el tab activo
+    let contenidoTablas = '';
+
+    if (activeTabId === 'resumen-panel') {
+        // Estadísticas generales
+        const totalFacturado = facturas.filter(f => f.estado === 'PAGADA').reduce((sum, f) => sum + (f.total || 0), 0);
+
+        contenidoTablas = `
+            <h4>Estadísticas Generales</h4>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr style="background-color: #f8f9fa;">
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Métrica</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Valor</th>
+                </tr>
+                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Total de Pedidos</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${pedidos.length}</td></tr>
+                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Pedidos Completados</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${pedidos.filter(p => p.estado === 'COMPLETADO').length}</td></tr>
+                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Órdenes Activas</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${ordenes.filter(o => ['ABIERTA', 'ASIGNADA', 'EN_PROCESO'].includes(o.estado)).length}</td></tr>
+                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Total Facturado</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMoney(totalFacturado)}</td></tr>
+            </table>
+
+            <h4>Pedidos por Estado</h4>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr style="background-color: #f8f9fa;">
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Estado</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Cantidad</th>
+                </tr>
+                ${(() => {
+                    // Obtener todos los estados únicos de los pedidos
+                    const estadosUnicos = [...new Set(pedidos.map(p => p.estado))];
+                    return estadosUnicos.map(estado => {
+                        const cantidad = pedidos.filter(p => p.estado === estado).length;
+                        return `<tr><td style="border: 1px solid #dee2e6; padding: 8px;">${formatEstadoPedido(estado)}</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${cantidad}</td></tr>`;
+                    }).join('');
+                })()}
+            </table>
+
+            <h4>Órdenes de Trabajo por Estado</h4>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr style="background-color: #f8f9fa;">
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Estado</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Cantidad</th>
+                </tr>
+                ${(() => {
+                    // Obtener todos los estados únicos de las órdenes
+                    const estadosUnicos = [...new Set(ordenes.map(o => o.estado))];
+                    return estadosUnicos.map(estado => {
+                        const cantidad = ordenes.filter(o => o.estado === estado).length;
+                        return `<tr><td style="border: 1px solid #dee2e6; padding: 8px;">${formatEstadoOrden(estado)}</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${cantidad}</td></tr>`;
+                    }).join('');
+                })()}
+            </table>
+
+            <h4>Facturas por Estado</h4>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr style="background-color: #f8f9fa;">
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Estado</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Cantidad</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Monto Total</th>
+                </tr>
+                ${(() => {
+                    // Obtener todos los estados únicos de las facturas
+                    const estadosUnicos = [...new Set(facturas.map(f => f.estado))];
+                    return estadosUnicos.map(estado => {
+                        const facturasEstado = facturas.filter(f => f.estado === estado);
+                        const monto = facturasEstado.reduce((sum, f) => sum + (f.total || 0), 0);
+                        return `<tr><td style="border: 1px solid #dee2e6; padding: 8px;">${formatEstadoFactura(estado)}</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${facturasEstado.length}</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMoney(monto)}</td></tr>`;
+                    }).join('');
+                })()}
+            </table>
+        `;
+    } else if (activeTabId === 'stock-panel') {
+        // Reporte de Stock y Márgenes
+        const repuestosActivos = repuestos.filter(r => r.activo);
+        const stockBajo = repuestos.filter(r => r.stockActual <= r.stockMinimo && r.activo);
+        const sinStock = repuestos.filter(r => r.stockActual === 0 && r.activo);
+        const valorInventario = repuestosActivos.reduce((sum, r) => sum + ((r.precioCosto || 0) * (r.stockActual || 0)), 0);
+
+        // Calcular repuestos con márgenes
+        const repuestosConMargen = repuestosActivos
+            .filter(r => r.precioCosto > 0 && r.precioVenta > 0)
+            .map(r => ({
+                ...r,
+                margenGs: r.precioVenta - r.precioCosto,
+                margenPorcentaje: ((r.precioVenta - r.precioCosto) / r.precioCosto * 100).toFixed(2)
+            }))
+            .sort((a, b) => b.margenPorcentaje - a.margenPorcentaje);
+
+        contenidoTablas = `
+            <h4>Resumen de Inventario</h4>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr style="background-color: #f8f9fa;">
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Métrica</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Valor</th>
+                </tr>
+                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Total de Repuestos Activos</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${repuestosActivos.length}</td></tr>
+                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Con Stock Bajo/Crítico</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${stockBajo.length}</td></tr>
+                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Sin Stock</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${sinStock.length}</td></tr>
+                <tr><td style="border: 1px solid #dee2e6; padding: 8px;"><strong>Valor Total del Inventario</strong></td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;"><strong>${formatMoney(valorInventario)}</strong></td></tr>
+            </table>
+
+            ${stockBajo.length > 0 ? `
+                <h4>Repuestos con Stock Bajo/Crítico (Top 15)</h4>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <tr style="background-color: #f8f9fa;">
+                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Código</th>
+                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Nombre</th>
+                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Stock Actual</th>
+                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Stock Mínimo</th>
+                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: center;">Estado</th>
+                    </tr>
+                    ${stockBajo.slice(0, 15).map(r => {
+                        let estado = '';
+                        if (r.stockActual === 0) {
+                            estado = 'SIN STOCK';
+                        } else if (r.stockActual <= r.stockMinimo) {
+                            estado = 'CRÍTICO';
+                        } else if (r.stockActual <= r.puntoReorden) {
+                            estado = 'BAJO';
+                        }
+                        return `
+                        <tr>
+                            <td style="border: 1px solid #dee2e6; padding: 8px;">${r.codigo || '-'}</td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px;">${r.nombre}</td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;"><strong>${r.stockActual || 0}</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${r.stockMinimo || 0}</td>
+                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: center;">${estado}</td>
+                        </tr>
+                    `;}).join('')}
+                </table>
+            ` : '<p style="text-align: center; color: #28a745; padding: 20px;"><strong>✓ Todos los repuestos tienen stock adecuado</strong></p>'}
+
+            <h4>Análisis de Márgenes de Ganancia (Top 15)</h4>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr style="background-color: #f8f9fa;">
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Código</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Nombre</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Precio Costo</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Precio Venta</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Margen Gs.</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Margen %</th>
+                </tr>
+                ${repuestosConMargen.slice(0, 15).map(r => `
+                    <tr>
+                        <td style="border: 1px solid #dee2e6; padding: 8px;">${r.codigo || '-'}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 8px;">${r.nombre}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMoney(r.precioCosto)}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMoney(r.precioVenta)}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right; color: #28a745;"><strong>${formatMoney(r.margenGs)}</strong></td>
+                        <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;"><strong>${r.margenPorcentaje}%</strong></td>
+                    </tr>
+                `).join('')}
+            </table>
+        `;
+    } else if (activeTabId === 'ventas-panel') {
+        // Reporte de Ventas
+        const facturasPagadas = facturas.filter(f => f.estado === 'PAGADA');
+        const totalVentas = facturasPagadas.reduce((sum, f) => sum + (f.total || 0), 0);
+
+        contenidoTablas = `
+            <h4>Resumen de Ventas</h4>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr style="background-color: #f8f9fa;">
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Métrica</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Valor</th>
+                </tr>
+                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Total de Facturas</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${facturas.length}</td></tr>
+                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Facturas Pagadas</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${facturasPagadas.length}</td></tr>
+                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Total Ventas</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMoney(totalVentas)}</td></tr>
+            </table>
+
+            <h4>Detalle de Facturas</h4>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr style="background-color: #f8f9fa;">
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Nº Factura</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Cliente</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Fecha</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Estado</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Total</th>
+                </tr>
+                ${facturas.slice(0, 30).map(f => `
+                    <tr>
+                        <td style="border: 1px solid #dee2e6; padding: 8px;">${f.numeroFactura}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 8px;">${f.cliente?.nombre || ''} ${f.cliente?.apellido || ''}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 8px;">${new Date(f.fechaEmision).toLocaleDateString('es-PY')}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 8px;">${f.estado}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMoney(f.total)}</td>
+                    </tr>
+                `).join('')}
+            </table>
+        `;
+    }
+
     // Crear elemento para el PDF
     const elemento = document.createElement('div');
     elemento.style.padding = '20px';
+    elemento.style.fontFamily = 'Arial, sans-serif';
+    elemento.style.fontSize = '12px';
     elemento.innerHTML = `
         <div style="text-align: center; margin-bottom: 20px;">
-            <h2>Sistema Multiservicios</h2>
-            <h3>${nombreReporte.replace(/_/g, ' ')}</h3>
-            <p>Período: ${fechaInicio} al ${fechaFin}</p>
-            <p>Generado: ${fechaActual}</p>
+            <h2 style="margin: 0;">Sistema Multiservicios</h2>
+            <h3 style="margin: 10px 0;">${nombreReporte.replace(/_/g, ' ')}</h3>
+            <p style="margin: 5px 0;">Período: ${fechaInicio} al ${fechaFin}</p>
+            <p style="margin: 5px 0;">Generado: ${fechaActual}</p>
         </div>
-        ${activeTab.innerHTML}
+        ${contenidoTablas}
     `;
 
     // Configuración de html2pdf
     const opt = {
         margin: 10,
-        filename: `${nombreReporte}_${fechaActual}.pdf`,
+        filename: `${nombreReporte}_${fechaActual.replace(/\//g, '-')}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -920,5 +1219,9 @@ function exportarPDF() {
 
 // Inicializar
 document.addEventListener('DOMContentLoaded', function() {
+    // Ajustar vista según el rol
+    ajustarVistaParaSupervisor();
+
+    // Cargar reportes
     cargarReportes();
 });

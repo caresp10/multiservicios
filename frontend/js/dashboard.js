@@ -192,11 +192,11 @@ async function loadTecnicoDashboard() {
 
         // Calcular estadísticas
         const ordenesActivas = misOrdenes.filter(o =>
-            o.estado === 'ASIGNADO' || o.estado === 'EN_PROGRESO'
+            o.estado === 'ABIERTA' || o.estado === 'ASIGNADA' || o.estado === 'EN_PROCESO'
         ).length;
 
         const ordenesCompletadas = misOrdenes.filter(o =>
-            o.estado === 'COMPLETADO'
+            o.estado === 'TERMINADA' || o.estado === 'FACTURADA'
         ).length;
 
         // Órdenes del mes actual
@@ -227,6 +227,16 @@ async function loadTecnicoDashboard() {
 
         // Cargar alertas de órdenes pendientes
         loadAlertasTecnico(misOrdenes);
+
+        // Cambiar el título y enlace del botón "Ver Todos" para técnicos
+        const tableHeader = document.querySelector('.table-header h5');
+        const verTodosLink = document.querySelector('.table-header a');
+        if (tableHeader) {
+            tableHeader.innerHTML = '<i class="fas fa-clock"></i> Mis Órdenes Recientes';
+        }
+        if (verTodosLink) {
+            verTodosLink.href = 'mis-ordenes.html';
+        }
 
     } catch (error) {
         console.error('Error cargando dashboard de técnico:', error);
@@ -279,7 +289,7 @@ function loadAlertasTecnico(ordenes) {
 
     // Filtrar órdenes activas
     const ordenesActivas = ordenes.filter(o =>
-        o.estado === 'ASIGNADO' || o.estado === 'EN_PROGRESO'
+        o.estado === 'ABIERTA' || o.estado === 'ASIGNADA' || o.estado === 'EN_PROCESO'
     );
 
     if (ordenesActivas.length > 0) {
@@ -287,7 +297,7 @@ function loadAlertasTecnico(ordenes) {
             <a href="mis-ordenes.html" class="list-group-item list-group-item-action">
                 <div class="d-flex w-100 justify-content-between">
                     <h6 class="mb-1">Pedido #${orden.pedido?.numeroPedido || 'N/A'}</h6>
-                    <small class="text-${orden.estado === 'ASIGNADO' ? 'warning' : 'info'}">
+                    <small class="text-${orden.estado === 'ASIGNADA' ? 'warning' : 'info'}">
                         ${formatEstadoOrden(orden.estado)}
                     </small>
                 </div>
@@ -308,10 +318,14 @@ function loadAlertasTecnico(ordenes) {
 // Formatear estado de orden
 function formatEstadoOrden(estado) {
     const estados = {
-        'ASIGNADO': 'Asignado',
-        'EN_PROGRESO': 'En Progreso',
-        'COMPLETADO': 'Completado',
-        'CANCELADO': 'Cancelado'
+        'ABIERTA': 'Abierta',
+        'ASIGNADA': 'Asignada',
+        'EN_PROCESO': 'En Proceso',
+        'ESPERANDO_REVISION': 'Esperando Revisión',
+        'DEVUELTA_A_TECNICO': 'Devuelta a Técnico',
+        'TERMINADA': 'Terminada',
+        'FACTURADA': 'Facturada',
+        'CANCELADA': 'Cancelada'
     };
     return estados[estado] || estado;
 }

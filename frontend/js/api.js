@@ -342,6 +342,40 @@ class ProveedorService {
     }
 }
 
+class LoteRepuestoService {
+    static getLotesPorRepuesto(idRepuesto) {
+        return ApiService.get(`/lotes/repuesto/${idRepuesto}`);
+    }
+
+    static getLotesDisponibles(idRepuesto) {
+        return ApiService.get(`/lotes/repuesto/${idRepuesto}/disponibles`);
+    }
+
+    static getStockDisponible(idRepuesto) {
+        return ApiService.get(`/lotes/repuesto/${idRepuesto}/stock`);
+    }
+
+    static getProveedoresPorRepuesto(idRepuesto) {
+        return ApiService.get(`/lotes/repuesto/${idRepuesto}/proveedores`);
+    }
+
+    static getLotesProximosAVencer(dias = 30) {
+        return ApiService.get(`/lotes/proximos-vencer?dias=${dias}`);
+    }
+
+    static getLotesVencidos() {
+        return ApiService.get('/lotes/vencidos');
+    }
+
+    static ajustarInventario(ajuste) {
+        return ApiService.post('/lotes/ajuste-inventario', ajuste);
+    }
+
+    static getUltimoPrecioCosto(idRepuesto) {
+        return ApiService.get(`/lotes/repuesto/${idRepuesto}/ultimo-precio`);
+    }
+}
+
 class RepuestoService {
     static getAll() {
         return ApiService.get('/repuestos');

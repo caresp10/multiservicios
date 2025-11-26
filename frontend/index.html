@@ -50,6 +50,12 @@
                     </div>
                 </form>
 
+                <!-- Alert for inactivity logout -->
+                <div id="inactivityAlert" class="alert alert-warning mt-3 d-none" role="alert">
+                    <i class="fas fa-clock"></i>
+                    <span>Su sesión fue cerrada por inactividad. Por favor, inicie sesión nuevamente.</span>
+                </div>
+
                 <!-- Alert for errors -->
                 <div id="loginAlert" class="alert alert-danger mt-3 d-none" role="alert">
                     <i class="fas fa-exclamation-circle"></i>
@@ -81,6 +87,13 @@
         // Redirigir si ya está autenticado
         if (AuthService.isAuthenticated()) {
             window.location.href = 'pages/dashboard.html';
+        }
+
+        // Mostrar alerta si fue desconectado por inactividad
+        const logoutReason = sessionStorage.getItem('logoutReason');
+        if (logoutReason === 'inactivity') {
+            document.getElementById('inactivityAlert').classList.remove('d-none');
+            sessionStorage.removeItem('logoutReason');
         }
 
         document.getElementById('loginForm').addEventListener('submit', async function(e) {

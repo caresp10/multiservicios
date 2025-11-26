@@ -4,8 +4,10 @@ import com.empresa.multiservices.exception.ResourceNotFoundException;
 import com.empresa.multiservices.model.*;
 import com.empresa.multiservices.repository.LoteRepuestoRepository;
 import com.empresa.multiservices.repository.RepuestoRepository;
+import com.empresa.multiservices.repository.ProveedorRepository;
 import com.empresa.multiservices.repository.MovimientoStockRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +28,13 @@ public class LoteRepuestoService {
     private RepuestoRepository repuestoRepository;
 
     @Autowired
+    private ProveedorRepository proveedorRepository;
+
+    @Autowired
     private MovimientoStockRepository movimientoStockRepository;
+
+    @Autowired
+    private UsuarioService usuarioService;
 
     /**
      * Crea un nuevo lote de repuesto (usado al registrar una compra)
@@ -258,6 +266,135 @@ public class LoteRepuestoService {
     @Transactional(readOnly = true)
     public BigDecimal obtenerUltimoPrecioCosto(Long idRepuesto) {
         return loteRepository.findUltimoPrecioCosto(idRepuesto);
+    }
+
+    /**
+     * Realiza un ajuste manual de inventario (entrada o salida)
+     * Crea un lote para entradas o descuenta de lotes existentes para salidas
+     */
+    public LoteRepuesto ajustarInventario(Long idRepuesto, String tipoMovimiento, Integer cantidad,
+                                           String motivo, Long idProveedor, BigDecimal precioCosto,
+                                           String observaciones) {
+        Repuesto repuesto = repuestoRepository.findById(idRepuesto)
+                .orElseThrow(() -> new ResourceNotFoundException("Repuesto no encontrado con ID: " + idRepuesto));
+
+        // Obtener usuario actual
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario usuario = usuarioService.buscarPorUsername(username);
+
+        // Convertir motivo string a enum
+        MovimientoStock.MotivoMovimiento motivoEnum;
+        try {
+            motivoEnum = MovimientoStock.MotivoMovimiento.valueOf(motivo);
+        } catch (IllegalArgumentException e) {
+            motivoEnum = MovimientoStock.MotivoMovimiento.AJUSTE_INVENTARIO;
+        }
+
+        LoteRepuesto loteResultado = null;
+
+        if ("ENTRADA".equals(tipoMovimiento)) {
+            // Para entradas, crear un nuevo lote
+            Proveedor proveedor = null;
+            if (idProveedor != null) {
+                proveedor = proveedorRepository.findById(idProveedor)
+                        .orElseThrow(() -> new ResourceNotFoundException("Proveedor no encontrado"));
+            } else {
+                // Usar proveedor por defecto o el del repuesto
+                proveedor = repuesto.getProveedor();
+                if (proveedor == null) {
+                    throw new IllegalArgumentException("Debe especificar un proveedor para la entrada de stock");
+                }
+            }
+
+            // Si no se especifica precio, usar el precio de costo actual del repuesto
+            if (precioCosto == null || precioCosto.compareTo(BigDecimal.ZERO) == 0) {
+                precioCosto = repuesto.getPrecioCosto();
+            }
+
+            LoteRepuesto nuevoLote = LoteRepuesto.builder()
+                    .repuesto(repuesto)
+                    .proveedor(proveedor)
+                    .cantidadInicial(cantidad)
+                    .cantidadDisponible(cantidad)
+                    .precioCostoUnitario(precioCosto)
+                    .fechaIngreso(LocalDateTime.now())
+                    .activo(true)
+                    .build();
+
+            loteResultado = loteRepository.save(nuevoLote);
+
+            // Registrar movimiento de entrada
+            MovimientoStock movimiento = MovimientoStock.builder()
+                    .repuesto(repuesto)
+                    .tipoMovimiento(MovimientoStock.TipoMovimiento.ENTRADA)
+                    .cantidad(cantidad)
+                    .motivo(motivoEnum)
+                    .referencia("AJUSTE-" + loteResultado.getIdLote())
+                    .stockAnterior(repuesto.getStockActual())
+                    .stockNuevo(repuesto.getStockActual() + cantidad)
+                    .usuario(usuario)
+                    .fechaMovimiento(LocalDateTime.now())
+                    .observaciones(observaciones != null ? observaciones : "Ajuste manual de inventario - Entrada")
+                    .build();
+
+            movimientoStockRepository.save(movimiento);
+
+            System.out.println("Ajuste de entrada - Repuesto: " + repuesto.getCodigo() +
+                              ", Cantidad: " + cantidad + ", Motivo: " + motivo);
+
+        } else if ("SALIDA".equals(tipoMovimiento)) {
+            // Para salidas, descontar de lotes existentes usando FIFO
+            int stockActual = obtenerStockDisponible(idRepuesto);
+            if (stockActual < cantidad) {
+                throw new RuntimeException("Stock insuficiente. Disponible: " + stockActual +
+                                          ", Solicitado: " + cantidad);
+            }
+
+            // Usar el método FIFO existente pero con motivo de ajuste
+            List<LoteRepuesto> lotesDisponibles = loteRepository.findLotesDisponiblesFIFO(idRepuesto);
+            int cantidadPendiente = cantidad;
+
+            for (LoteRepuesto lote : lotesDisponibles) {
+                if (cantidadPendiente <= 0) break;
+
+                int cantidadADescontar = Math.min(lote.getCantidadDisponible(), cantidadPendiente);
+                int stockAnterior = lote.getCantidadDisponible();
+
+                lote.descontarStock(cantidadADescontar);
+                loteRepository.save(lote);
+
+                // Registrar movimiento
+                MovimientoStock movimiento = MovimientoStock.builder()
+                        .repuesto(repuesto)
+                        .tipoMovimiento(MovimientoStock.TipoMovimiento.SALIDA)
+                        .cantidad(cantidadADescontar)
+                        .motivo(motivoEnum)
+                        .referencia("AJUSTE-SALIDA-" + lote.getIdLote())
+                        .stockAnterior(stockAnterior)
+                        .stockNuevo(lote.getCantidadDisponible())
+                        .usuario(usuario)
+                        .fechaMovimiento(LocalDateTime.now())
+                        .observaciones(observaciones != null ? observaciones : "Ajuste manual de inventario - Salida")
+                        .build();
+
+                movimientoStockRepository.save(movimiento);
+                cantidadPendiente -= cantidadADescontar;
+
+                if (loteResultado == null) {
+                    loteResultado = lote; // Retornar el primer lote afectado
+                }
+            }
+
+            System.out.println("Ajuste de salida - Repuesto: " + repuesto.getCodigo() +
+                              ", Cantidad: " + cantidad + ", Motivo: " + motivo);
+        } else {
+            throw new IllegalArgumentException("Tipo de movimiento no válido: " + tipoMovimiento);
+        }
+
+        // Actualizar stock total del repuesto
+        actualizarStockRepuesto(idRepuesto);
+
+        return loteResultado;
     }
 
     /**

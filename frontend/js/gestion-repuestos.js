@@ -451,6 +451,118 @@ async function cargarProveedores() {
     }
 }
 
+// Modal de ajuste de inventario
+const modalAjuste = new bootstrap.Modal(document.getElementById('modalAjusteInventario'));
+
+// Abrir modal de ajuste de inventario
+async function openModalAjusteInventario() {
+    document.getElementById('formAjusteInventario').reset();
+    document.getElementById('ajusteStockActual').value = '';
+
+    // Cargar repuestos en el select
+    const selectRepuesto = document.getElementById('ajusteRepuesto');
+    selectRepuesto.innerHTML = '<option value="">Seleccione repuesto</option>' +
+        repuestos.filter(r => r.activo).map(r =>
+            `<option value="${r.idRepuesto}">${r.codigo} - ${r.nombre} (Stock: ${r.stockActual})</option>`
+        ).join('');
+
+    // Cargar proveedores en el select de ajuste
+    const selectProveedorAjuste = document.getElementById('ajusteProveedor');
+    selectProveedorAjuste.innerHTML = '<option value="">Sin proveedor (ajuste interno)</option>' +
+        proveedores.filter(p => p.activo).map(p =>
+            `<option value="${p.idProveedor}">${p.nombre}</option>`
+        ).join('');
+
+    // Agregar event listener para mostrar stock actual
+    selectRepuesto.addEventListener('change', function() {
+        const idRepuesto = this.value;
+        const repuesto = repuestos.find(r => r.idRepuesto == idRepuesto);
+        if (repuesto) {
+            document.getElementById('ajusteStockActual').value = repuesto.stockActual;
+            // Sugerir precio de costo actual
+            document.getElementById('ajustePrecioCosto').value = repuesto.precioCosto || '';
+        } else {
+            document.getElementById('ajusteStockActual').value = '';
+            document.getElementById('ajustePrecioCosto').value = '';
+        }
+    });
+
+    modalAjuste.show();
+}
+
+// Realizar ajuste de inventario
+async function realizarAjusteInventario() {
+    const form = document.getElementById('formAjusteInventario');
+
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const idRepuesto = document.getElementById('ajusteRepuesto').value;
+    const tipoMovimiento = document.getElementById('ajusteTipoMovimiento').value;
+    const cantidad = parseInt(document.getElementById('ajusteCantidad').value);
+    const motivo = document.getElementById('ajusteMotivo').value;
+    const idProveedor = document.getElementById('ajusteProveedor').value;
+    const precioCosto = document.getElementById('ajustePrecioCosto').value;
+    const observaciones = document.getElementById('ajusteObservaciones').value;
+
+    // Validaciones
+    if (!idRepuesto) {
+        alert('Debe seleccionar un repuesto');
+        return;
+    }
+
+    if (!cantidad || cantidad <= 0) {
+        alert('La cantidad debe ser mayor a 0');
+        return;
+    }
+
+    // Para entradas, verificar proveedor
+    if (tipoMovimiento === 'ENTRADA' && !idProveedor) {
+        const repuesto = repuestos.find(r => r.idRepuesto == idRepuesto);
+        if (!repuesto.proveedor) {
+            alert('Debe seleccionar un proveedor para la entrada de stock');
+            return;
+        }
+    }
+
+    // Confirmar la acción
+    const repuesto = repuestos.find(r => r.idRepuesto == idRepuesto);
+    const mensaje = tipoMovimiento === 'ENTRADA'
+        ? `¿Confirma agregar ${cantidad} unidades de "${repuesto.nombre}"?`
+        : `¿Confirma descontar ${cantidad} unidades de "${repuesto.nombre}"?`;
+
+    if (!confirm(mensaje)) {
+        return;
+    }
+
+    const ajusteData = {
+        idRepuesto: parseInt(idRepuesto),
+        tipoMovimiento: tipoMovimiento,
+        cantidad: cantidad,
+        motivo: motivo,
+        idProveedor: idProveedor ? parseInt(idProveedor) : null,
+        precioCosto: precioCosto ? parseFloat(precioCosto) : null,
+        observaciones: observaciones || null
+    };
+
+    try {
+        const response = await LoteRepuestoService.ajustarInventario(ajusteData);
+
+        if (response.success) {
+            alert('Ajuste de inventario realizado correctamente');
+            modalAjuste.hide();
+            cargarRepuestos(); // Recargar para ver el nuevo stock
+        } else {
+            alert(response.message || 'Error al realizar el ajuste');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al realizar el ajuste de inventario');
+    }
+}
+
 // Inicializar al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
     cargarCategorias();

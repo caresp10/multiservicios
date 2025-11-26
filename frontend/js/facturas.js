@@ -589,8 +589,6 @@ function mostrarDetalleOT(ot, datosFacturacion) {
     document.getElementById('detInforme').textContent = ot.informeFinal || 'N/A';
     document.getElementById('detHoras').textContent = ot.horasTrabajadas ?
         `${ot.horasTrabajadas} horas` : 'N/A';
-    document.getElementById('detCostoManoObra').textContent = ot.costoManoObra ?
-        formatMoney(ot.costoManoObra) : 'N/A';
 
     // Items del Presupuesto - GUARDAR EN VARIABLE GLOBAL
     itemsPresupuesto = datosFacturacion.itemsPresupuesto || [];
@@ -675,6 +673,8 @@ function agregarItemFactura() {
 
 function renderItemsAdicionales() {
     const tbody = document.getElementById('detItemsAdicionales');
+
+    if (!tbody) return; // El elemento no existe en el DOM
 
     if (itemsAdicionales.length === 0) {
         tbody.innerHTML = `
@@ -1577,16 +1577,16 @@ async function cargarServiciosFactura() {
         const response = await ServicioCatalogoService.getActivos();
         if (response.success && response.data) {
             serviciosCatalogo = response.data;
-            console.log('Servicios cargados:', serviciosCatalogo.length);
-            console.log('Detalles de servicios:', serviciosCatalogo.map(s => `${s.codigo} - ${s.nombre}: ${s.precioBase}`));
 
             const select = document.getElementById('selectServicioFactura');
-            select.innerHTML = '<option value="">Seleccione un servicio...</option>' +
-                serviciosCatalogo.map(servicio => `
-                    <option value="${servicio.idServicio}">
-                        ${servicio.nombre} - ${formatCurrency(servicio.precioBase)}
-                    </option>
-                `).join('');
+            if (select) {
+                select.innerHTML = '<option value="">Seleccione un servicio...</option>' +
+                    serviciosCatalogo.map(servicio => `
+                        <option value="${servicio.idServicio}">
+                            ${servicio.nombre} - ${formatCurrency(servicio.precioBase)}
+                        </option>
+                    `).join('');
+            }
         }
     } catch (error) {
         console.error('Error al cargar servicios:', error);
@@ -1599,19 +1599,19 @@ async function cargarRepuestosFactura() {
         const response = await RepuestoService.getActivos();
         if (response.success && response.data) {
             repuestosCatalogo = response.data;
-            console.log('Repuestos cargados en facturas:', repuestosCatalogo.length);
-            console.log('Detalles de repuestos:', repuestosCatalogo.map(r => `${r.codigo} - ${r.nombre}: Stock=${r.stockActual}, Precio=${r.precioVenta}`));
 
             const select = document.getElementById('selectRepuestoFactura');
-            select.innerHTML = '<option value="">Seleccione un repuesto...</option>' +
-                repuestosCatalogo.map(repuesto => {
-                    const stockBadge = getStockBadge(repuesto);
-                    return `
-                        <option value="${repuesto.idRepuesto}">
-                            ${repuesto.codigo} - ${repuesto.nombre} ${stockBadge} - ${formatCurrency(repuesto.precioVenta)}
-                        </option>
-                    `;
-                }).join('');
+            if (select) {
+                select.innerHTML = '<option value="">Seleccione un repuesto...</option>' +
+                    repuestosCatalogo.map(repuesto => {
+                        const stockBadge = getStockBadge(repuesto);
+                        return `
+                            <option value="${repuesto.idRepuesto}">
+                                ${repuesto.codigo} - ${repuesto.nombre} ${stockBadge} - ${formatCurrency(repuesto.precioVenta)}
+                            </option>
+                        `;
+                    }).join('');
+            }
         }
     } catch (error) {
         console.error('Error al cargar repuestos:', error);

@@ -60,38 +60,52 @@ async function cargarMisOrdenes() {
     try {
         // Primero obtener datos del técnico si es rol TECNICO
         if (user.rol === 'TECNICO' && !miTecnico) {
+            console.log('Usuario TECNICO - obteniendo datos del técnico para idUsuario:', user.idUsuario);
             await obtenerMiTecnico();
         }
 
         const response = await OrdenTrabajoService.getAll();
+        console.log('Órdenes obtenidas:', response.data?.length || 0);
 
         if (response.success && response.data) {
             // Filtrar solo las órdenes asignadas al técnico actual
             ordenes = response.data.filter(orden => {
                 // Si el usuario es técnico, mostrar solo sus órdenes asignadas
-                if (user.rol === 'TECNICO' && orden.tecnico && miTecnico) {
-                    // Comparar por ID de técnico
-                    return orden.tecnico.idTecnico === miTecnico.idTecnico;
+                if (user.rol === 'TECNICO' && miTecnico) {
+                    const ordenTecnicoId = orden.tecnico?.idTecnico;
+                    const miTecnicoId = miTecnico.idTecnico;
+                    const coincide = ordenTecnicoId === miTecnicoId;
+
+                    if (orden.tecnico) {
+                        console.log(`OT ${orden.numeroOt}: tecnico.idTecnico=${ordenTecnicoId}, miTecnico.idTecnico=${miTecnicoId}, coincide=${coincide}`);
+                    }
+
+                    return coincide;
                 }
                 // Si es admin/supervisor, mostrar todas
                 return true;
             });
 
+            console.log('Órdenes filtradas por técnico:', ordenes.length);
+
             // Filtrar estados relevantes para técnicos
+            // Incluir ABIERTA para OTs recién creadas que necesitan ser iniciadas
             ordenes = ordenes.filter(orden =>
-                ['ASIGNADA', 'EN_PROCESO', 'ESPERANDO_REVISION', 'DEVUELTA_A_TECNICO', 'TERMINADA'].includes(orden.estado)
+                ['ABIERTA', 'ASIGNADA', 'EN_PROCESO', 'ESPERANDO_REVISION', 'DEVUELTA_A_TECNICO', 'TERMINADA'].includes(orden.estado)
             );
+
+            console.log('Órdenes filtradas por estado:', ordenes.length);
 
             renderOrdenes(ordenes);
         } else {
             throw new Error(response.message || 'Error al cargar órdenes de trabajo');
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error en cargarMisOrdenes:', error);
         table.innerHTML = `
             <tr>
                 <td colspan="7" class="text-center text-danger">
-                    <i class="fas fa-exclamation-triangle"></i> Error al cargar órdenes de trabajo
+                    <i class="fas fa-exclamation-triangle"></i> Error al cargar órdenes de trabajo: ${error.message}
                 </td>
             </tr>
         `;
@@ -226,6 +240,7 @@ function mostrarBotonesSegunEstado(estado) {
     btnEnviar.style.display = 'none';
 
     switch(estado) {
+        case 'ABIERTA':
         case 'ASIGNADA':
             btnIniciar.style.display = 'inline-block';
             break;

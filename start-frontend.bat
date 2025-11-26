@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo   Iniciando Frontend (Puerto 8080)
+echo   Iniciando Frontend (Puerto 8082)
 echo ========================================
 cd /d C:\java\multiservicios\frontend
 echo.

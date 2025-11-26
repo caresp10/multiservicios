@@ -101,24 +101,24 @@ function adjustMenuByRole() {
         if (menuAdministracion) menuAdministracion.style.display = 'none';
         if (menuReportes) menuReportes.style.display = 'none';
     } else if (user.rol === 'RECEPCION') {
-        // Para RECEPCION (Secretaria): Clientes, Pedidos, Presupuestos, Facturas
-        if (menuMisOrdenes) menuMisOrdenes.style.display = 'none';
-        if (menuClientes) menuClientes.style.display = 'block';
-        if (menuPedidos) menuPedidos.style.display = 'block';
-        if (menuPresupuestos) menuPresupuestos.style.display = 'block';
-        if (menuOrdenes) menuOrdenes.style.display = 'none';
-        if (menuFacturas) menuFacturas.style.display = 'block';
-        if (menuInventario) menuInventario.style.display = 'none';
-        if (menuAdministracion) menuAdministracion.style.display = 'none';
-        if (menuReportes) menuReportes.style.display = 'none';
-    } else if (user.rol === 'SUPERVISOR') {
-        // Para SUPERVISOR: Todo excepto Administración e Inventario
+        // Para RECEPCION (Secretaria): Clientes, Pedidos, Presupuestos, y ver OT (solo lectura)
         if (menuMisOrdenes) menuMisOrdenes.style.display = 'none';
         if (menuClientes) menuClientes.style.display = 'block';
         if (menuPedidos) menuPedidos.style.display = 'block';
         if (menuPresupuestos) menuPresupuestos.style.display = 'block';
         if (menuOrdenes) menuOrdenes.style.display = 'block';
-        if (menuFacturas) menuFacturas.style.display = 'block';
+        if (menuFacturas) menuFacturas.style.display = 'none';
+        if (menuInventario) menuInventario.style.display = 'none';
+        if (menuAdministracion) menuAdministracion.style.display = 'none';
+        if (menuReportes) menuReportes.style.display = 'none';
+    } else if (user.rol === 'SUPERVISOR') {
+        // Para SUPERVISOR: Gestión de OT y técnicos, sin facturas ni inventario
+        if (menuMisOrdenes) menuMisOrdenes.style.display = 'none';
+        if (menuClientes) menuClientes.style.display = 'block';
+        if (menuPedidos) menuPedidos.style.display = 'block';
+        if (menuPresupuestos) menuPresupuestos.style.display = 'block';
+        if (menuOrdenes) menuOrdenes.style.display = 'block';
+        if (menuFacturas) menuFacturas.style.display = 'none';
         if (menuInventario) menuInventario.style.display = 'none';
         if (menuAdministracion) menuAdministracion.style.display = 'none';
         if (menuReportes) menuReportes.style.display = 'block';

@@ -996,4 +996,85 @@ document.addEventListener('DOMContentLoaded', function() {
     cargarDatosFormulario();
     cargarServiciosCatalogo();
     cargarRepuestosCatalogo();
+
+    // Inicializar Select2 para búsqueda por teclado
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('#idPedido').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Seleccione un pedido',
+            allowClear: true,
+            dropdownParent: $('#modalPresupuesto'),
+            language: {
+                noResults: function() { return 'No se encontraron resultados'; },
+                searching: function() { return 'Buscando...'; }
+            }
+        });
+
+        $('#selectServicio').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Buscar servicio...',
+            allowClear: true,
+            dropdownParent: $('#modalPresupuesto'),
+            language: {
+                noResults: function() { return 'No se encontraron servicios'; },
+                searching: function() { return 'Buscando...'; }
+            }
+        });
+
+        $('#selectRepuesto').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Buscar repuesto...',
+            allowClear: true,
+            dropdownParent: $('#modalPresupuesto'),
+            language: {
+                noResults: function() { return 'No se encontraron repuestos'; },
+                searching: function() { return 'Buscando...'; }
+            }
+        });
+
+        // Manejar eventos change de Select2
+        $('#selectServicio').on('change', function() {
+            seleccionarServicio();
+        });
+
+        $('#selectRepuesto').on('change', function() {
+            seleccionarRepuesto();
+        });
+    }
+
+    // Función para recalcular validezDias desde fechaVencimiento
+    function recalcularValidezDias() {
+        const fechaVencimiento = document.getElementById('fechaVencimiento').value;
+        if (fechaVencimiento) {
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            const fechaVenc = new Date(fechaVencimiento + 'T00:00:00');
+            const diffTime = fechaVenc.getTime() - hoy.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            // Actualizar validezDias (mínimo 1 día)
+            document.getElementById('validezDias').value = Math.max(1, diffDays);
+            console.log('Validez recalculada:', diffDays, 'días');
+        }
+    }
+
+    // Función para actualizar fechaVencimiento desde validezDias
+    function actualizarFechaVencimiento() {
+        const dias = parseInt(document.getElementById('validezDias').value) || 15;
+        const hoy = new Date();
+        hoy.setDate(hoy.getDate() + dias);
+        const fechaVenc = hoy.toISOString().split('T')[0];
+        document.getElementById('fechaVencimiento').value = fechaVenc;
+        console.log('Fecha vencimiento actualizada:', fechaVenc);
+    }
+
+    // Event listeners para fechaVencimiento (change e input para mayor compatibilidad)
+    const fechaVencimientoInput = document.getElementById('fechaVencimiento');
+    fechaVencimientoInput.addEventListener('change', recalcularValidezDias);
+    fechaVencimientoInput.addEventListener('input', recalcularValidezDias);
+
+    // Event listeners para validezDias
+    const validezDiasInput = document.getElementById('validezDias');
+    validezDiasInput.addEventListener('change', actualizarFechaVencimiento);
+    validezDiasInput.addEventListener('input', actualizarFechaVencimiento);
 });

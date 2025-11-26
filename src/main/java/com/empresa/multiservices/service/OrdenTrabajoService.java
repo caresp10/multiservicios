@@ -227,7 +227,13 @@ public class OrdenTrabajoService {
             ot.setPrioridad(Prioridad.valueOf((String) datos.get("prioridad")));
         }
         if (datos.containsKey("estado")) {
-            ot.setEstado(EstadoOT.valueOf((String) datos.get("estado")));
+            EstadoOT nuevoEstado = EstadoOT.valueOf((String) datos.get("estado"));
+            ot.setEstado(nuevoEstado);
+
+            // Establecer fecha de finalización cuando se termina la OT
+            if (nuevoEstado == EstadoOT.TERMINADA && ot.getFechaFinalizacion() == null) {
+                ot.setFechaFinalizacion(LocalDateTime.now());
+            }
         }
         if (datos.containsKey("descripcionTrabajo")) {
             ot.setDescripcionTrabajo((String) datos.get("descripcionTrabajo"));

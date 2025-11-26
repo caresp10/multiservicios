@@ -27,4 +27,6 @@ public class UsuarioRequest {
     
     @NotNull(message = "El rol es obligatorio")
     private Rol rol;
+
+    private Boolean activo;
 }

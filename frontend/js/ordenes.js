@@ -95,7 +95,7 @@ function renderOrdenes(data) {
                         title="Editar">
                     <i class="fas fa-edit"></i>
                 </button>
-                ${orden.tecnico && (orden.estado === 'ASIGNADA' || orden.estado === 'EN_PROCESO') ? `
+                ${orden.tecnico && ['ASIGNADA', 'EN_PROCESO', 'DEVUELTA_A_TECNICO'].includes(orden.estado) && (user.rol === 'ADMIN' || user.rol === 'SUPERVISOR') ? `
                 <button class="btn btn-sm btn-outline-warning" onclick="reasignarTecnico(${orden.idOt})"
                         title="Reasignar Técnico">
                     <i class="fas fa-user-edit"></i>
@@ -331,7 +331,41 @@ async function editarOrden(id) {
                 document.getElementById('idPresupuesto').value = orden.presupuesto.idPresupuesto;
             }
 
-            document.getElementById('idTecnicoAsignado').value = orden.tecnico?.idTecnico || '';
+            // Filtrar técnicos por categoría del pedido (al editar)
+            const selectTecnico = document.getElementById('idTecnicoAsignado');
+            const categoriaIdPedido = orden.pedido?.categoria?.idCategoria;
+            const categoriaNombre = orden.pedido?.categoria?.nombre || 'Sin categoría';
+
+            if (categoriaIdPedido && tecnicos.length > 0) {
+                // Filtrar técnicos que coincidan con la categoría del pedido
+                const tecnicosFiltrados = tecnicos.filter(t => {
+                    if (t.categoria && t.categoria.idCategoria) {
+                        return t.categoria.idCategoria === categoriaIdPedido;
+                    }
+                    if (t.especialidad) {
+                        return t.especialidad.toLowerCase().includes(categoriaNombre.toLowerCase()) ||
+                               categoriaNombre.toLowerCase().includes(t.especialidad.toLowerCase());
+                    }
+                    return false;
+                });
+
+                if (tecnicosFiltrados.length > 0) {
+                    selectTecnico.innerHTML = '<option value="">Sin asignar</option>' +
+                        tecnicosFiltrados.map(t =>
+                            `<option value="${t.idTecnico}">${t.nombre} ${t.apellido}${t.especialidad ? ' - ' + t.especialidad : ''}</option>`
+                        ).join('');
+                } else {
+                    // Si no hay técnicos de esa categoría, mostrar todos con mensaje
+                    selectTecnico.innerHTML = '<option value="">Sin asignar</option>' +
+                        `<option disabled>-- No hay técnicos de ${categoriaNombre} --</option>` +
+                        tecnicos.map(t =>
+                            `<option value="${t.idTecnico}">${t.nombre} ${t.apellido}${t.especialidad ? ' - ' + t.especialidad : ''}${t.categoria ? ' (' + t.categoria.nombre + ')' : ''}</option>`
+                        ).join('');
+                }
+            }
+
+            // Asignar el técnico actual
+            selectTecnico.value = orden.tecnico?.idTecnico || '';
             document.getElementById('prioridad').value = orden.prioridad;
             document.getElementById('descripcionTrabajo').value = orden.descripcionTrabajo;
             document.getElementById('observaciones').value = orden.observaciones || '';

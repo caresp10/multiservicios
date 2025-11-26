@@ -29,6 +29,7 @@ public class FacturaService {
     private final ServicioCatalogoRepository servicioCatalogoRepository;
     private final TimbradoService timbradoService;
     private final LoteRepuestoService loteRepuestoService;
+    private final UsuarioService usuarioService;
 
     @Transactional(readOnly = true)
     public List<Factura> listarTodas() {
@@ -163,6 +164,9 @@ public class FacturaService {
                 }
             }
         }
+
+        // Establecer estado como PAGADA (factura al contado)
+        factura.setEstado(EstadoFactura.PAGADA);
 
         Factura saved = facturaRepository.save(factura);
 
@@ -366,9 +370,7 @@ public class FacturaService {
                 org.springframework.security.core.userdetails.UserDetails userDetails =
                         (org.springframework.security.core.userdetails.UserDetails) authentication.getPrincipal();
                 String username = userDetails.getUsername();
-                // Aquí deberías tener un UsuarioRepository para buscar por username
-                // Por ahora retornamos null, el campo usuario en MovimientoStock es opcional
-                return null;
+                return usuarioService.buscarPorUsername(username);
             }
         } catch (Exception e) {
             System.out.println("⚠️ No se pudo obtener usuario actual: " + e.getMessage());
@@ -407,6 +409,24 @@ public class FacturaService {
                 itemMap.put("cantidad", item.getCantidad());
                 itemMap.put("precioUnitario", item.getPrecioUnitario());
                 itemMap.put("subtotal", item.getSubtotal());
+
+                // Incluir tipo de item y referencias para el descuento de stock
+                if (item.getTipoItem() != null) {
+                    itemMap.put("tipoItem", item.getTipoItem().name());
+                } else {
+                    itemMap.put("tipoItem", "SERVICIO"); // Por defecto
+                }
+
+                // Incluir ID del servicio si existe
+                if (item.getServicio() != null) {
+                    itemMap.put("idServicio", item.getServicio().getIdServicio());
+                }
+
+                // Incluir ID del repuesto si existe
+                if (item.getRepuesto() != null) {
+                    itemMap.put("idRepuesto", item.getRepuesto().getIdRepuesto());
+                }
+
                 itemsPresupuesto.add(itemMap);
                 subtotalPresupuesto = subtotalPresupuesto.add(item.getSubtotal());
             }
