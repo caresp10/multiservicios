@@ -198,6 +198,7 @@ function renderPresupuestos(data) {
                         title="Descargar PDF">
                     <i class="fas fa-file-pdf"></i>
                 </button>
+                ${!presupuesto.tieneOrdenFacturada ? `
                 <button class="btn btn-sm btn-outline-primary" onclick="editarPresupuesto(${presupuesto.idPresupuesto})"
                         title="Editar">
                     <i class="fas fa-edit"></i>
@@ -206,6 +207,12 @@ function renderPresupuestos(data) {
                         title="Eliminar">
                     <i class="fas fa-trash"></i>
                 </button>
+                ` : `
+                <button class="btn btn-sm btn-outline-secondary" disabled
+                        title="No se puede editar un presupuesto con orden facturada">
+                    <i class="fas fa-lock"></i>
+                </button>
+                `}
             </td>
         </tr>
     `).join('');
@@ -291,6 +298,13 @@ async function editarPresupuesto(id) {
 
         if (response.success && response.data) {
             const presupuesto = response.data;
+
+            // Verificar si el presupuesto tiene una orden de trabajo facturada
+            if (presupuesto.tieneOrdenFacturada) {
+                alert('No se puede editar un presupuesto que tiene una orden de trabajo facturada.');
+                return;
+            }
+
             document.getElementById('modalPresupuestoTitle').innerHTML =
                 '<i class="fas fa-edit"></i> Editar Presupuesto';
 
@@ -407,6 +421,13 @@ async function guardarPresupuesto() {
         const id = document.getElementById('presupuestoId').value;
 
         if (id) {
+            // Validar que el presupuesto no tenga orden facturada antes de actualizar
+            const presupuestoActual = await PresupuestoService.getById(id);
+            if (presupuestoActual.success && presupuestoActual.data && presupuestoActual.data.tieneOrdenFacturada) {
+                alert('No se puede modificar un presupuesto que tiene una orden de trabajo facturada.');
+                return;
+            }
+
             response = await PresupuestoService.update(id, presupuestoData);
         } else {
             response = await PresupuestoService.create(presupuestoData);
@@ -415,7 +436,12 @@ async function guardarPresupuesto() {
         if (response.success) {
             modal.hide();
             await cargarPresupuestos();
-            alert(id ? 'Presupuesto actualizado exitosamente' : 'Presupuesto creado exitosamente');
+
+            // Obtener el ID del presupuesto guardado
+            const presupuestoId = response.data.idPresupuesto || id;
+
+            // Abrir automáticamente la vista previa del presupuesto guardado
+            await vistaPrevia(presupuestoId);
         } else {
             throw new Error(response.message);
         }
@@ -430,11 +456,18 @@ async function guardarPresupuesto() {
 }
 
 async function eliminarPresupuesto(id) {
-    if (!confirm('¿Está seguro que desea eliminar este presupuesto?')) {
-        return;
-    }
-
     try {
+        // Validar que el presupuesto no tenga orden facturada antes de eliminar
+        const presupuestoActual = await PresupuestoService.getById(id);
+        if (presupuestoActual.success && presupuestoActual.data && presupuestoActual.data.tieneOrdenFacturada) {
+            alert('No se puede eliminar un presupuesto que tiene una orden de trabajo facturada.');
+            return;
+        }
+
+        if (!confirm('¿Está seguro que desea eliminar este presupuesto?')) {
+            return;
+        }
+
         const response = await PresupuestoService.delete(id);
 
         if (response.success) {
@@ -510,7 +543,7 @@ let repuestoSeleccionado = null;
 
 // Cargar servicios del catálogo
 async function cargarServiciosCatalogo() {
-    try {
+    try { // TODO: This should be a service call to a generic service, not in presupuestos.js
         const response = await ServicioCatalogoService.getActivos();
 
         if (response.success && response.data) {
@@ -613,7 +646,7 @@ function formatCurrency(amount) {
 
 // Cargar repuestos activos
 async function cargarRepuestosCatalogo() {
-    try {
+    try { // TODO: This should be a service call to a generic service, not in presupuestos.js
         const response = await RepuestoService.getActivos();
 
         if (response.success && response.data) {
@@ -771,8 +804,13 @@ async function vistaPrevia(id) {
             const contenido = generarHTMLPresupuesto(presupuesto);
             document.getElementById('vistaPreviaContent').innerHTML = contenido;
 
-            // Configurar botón de descarga en el modal
+            // Configurar botón de descarga PDF en el modal
             document.getElementById('btnDescargarPDF').onclick = () => generarPDF(id);
+
+            // Configurar botón de imprimir en el modal
+            document.getElementById('btnImprimirPresupuesto').onclick = () => {
+                window.print();
+            };
 
             if (!modalVistaPrevia) {
                 modalVistaPrevia = new bootstrap.Modal(document.getElementById('modalVistaPrevia'));
@@ -788,7 +826,7 @@ async function vistaPrevia(id) {
 // Hacer la función global
 window.vistaPrevia = vistaPrevia;
 
-// Generar PDF del presupuesto
+// Generar PDF del presupuesto usando pdfMake
 async function generarPDF(id) {
     try {
         let presupuesto = presupuestoActualPDF;
@@ -803,29 +841,190 @@ async function generarPDF(id) {
             }
         }
 
-        // Crear elemento temporal para el PDF
-        const elementoPDF = document.createElement('div');
-        elementoPDF.innerHTML = generarHTMLPresupuesto(presupuesto, true);
-        elementoPDF.style.padding = '20px';
-        document.body.appendChild(elementoPDF);
+        const cliente = presupuesto.pedido?.cliente || {};
+        const items = presupuesto.items || [];
 
-        const opciones = {
-            margin: 10,
-            filename: `Presupuesto_${presupuesto.numeroPresupuesto}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        // Construir tabla de items
+        const itemsBody = [
+            [
+                { text: 'Descripción', style: 'tableHeader' },
+                { text: 'Cant.', style: 'tableHeader', alignment: 'center' },
+                { text: 'P. Unit.', style: 'tableHeader', alignment: 'right' },
+                { text: 'Subtotal', style: 'tableHeader', alignment: 'right' }
+            ]
+        ];
+
+        items.forEach(item => {
+            itemsBody.push([
+                `${getTipoItemText(item.tipoItem)} ${item.descripcion}`,
+                { text: item.cantidad.toString(), alignment: 'center' },
+                { text: formatMoney(item.precioUnitario), alignment: 'right' },
+                { text: formatMoney(item.subtotal || item.cantidad * item.precioUnitario), alignment: 'right', bold: true }
+            ]);
+        });
+
+        // Construir tabla de totales
+        const totalesBody = [
+            ['Subtotal:', { text: formatMoney(presupuesto.subtotal), alignment: 'right', bold: true }]
+        ];
+
+        if (presupuesto.descuento > 0) {
+            totalesBody.push([
+                { text: 'Descuento:', color: '#dc3545' },
+                { text: '-' + formatMoney(presupuesto.descuento), alignment: 'right', color: '#dc3545', bold: true }
+            ]);
+        }
+
+        totalesBody.push(
+            ['IVA (10%):', { text: formatMoney(presupuesto.iva), alignment: 'right', bold: true }],
+            [
+                { text: 'TOTAL:', fontSize: 14, bold: true },
+                { text: formatMoney(presupuesto.total), alignment: 'right', fontSize: 14, bold: true, color: '#007bff' }
+            ]
+        );
+
+        // Definir el documento PDF
+        const docDefinition = {
+            content: [
+                // Encabezado
+                { text: 'MULTISERVICIOS', style: 'header', alignment: 'center' },
+                { text: 'Sistema de Gestión de Servicios', style: 'subheader', alignment: 'center', margin: [0, 0, 0, 10] },
+
+                // Título del documento
+                { text: `PRESUPUESTO N° ${presupuesto.numeroPresupuesto}`, style: 'title', alignment: 'center', margin: [0, 10, 0, 20] },
+
+                // Información del cliente y presupuesto
+                {
+                    columns: [
+                        {
+                            width: '50%',
+                            stack: [
+                                { text: 'Datos del Cliente', style: 'sectionHeader', margin: [0, 0, 0, 5] },
+                                { text: `Nombre: ${cliente.nombre || ''} ${cliente.apellido || ''}`, margin: [0, 2] },
+                                { text: `RUC/CI: ${cliente.rucCi || 'N/A'}`, margin: [0, 2] },
+                                { text: `Teléfono: ${cliente.telefono || 'N/A'}`, margin: [0, 2] },
+                                { text: `Email: ${cliente.email || 'N/A'}`, margin: [0, 2] },
+                                { text: `Dirección: ${cliente.direccion || 'N/A'}`, margin: [0, 2] }
+                            ]
+                        },
+                        {
+                            width: '50%',
+                            stack: [
+                                { text: 'Datos del Presupuesto', style: 'sectionHeader', alignment: 'right', margin: [0, 0, 0, 5] },
+                                { text: `Pedido: ${presupuesto.pedido?.numeroPedido || 'N/A'}`, alignment: 'right', margin: [0, 2] },
+                                { text: `Fecha: ${formatDate(presupuesto.fechaGeneracion)}`, alignment: 'right', margin: [0, 2] },
+                                { text: `Vencimiento: ${presupuesto.fechaVencimiento ? formatDateOnly(presupuesto.fechaVencimiento) : 'N/A'}`, alignment: 'right', margin: [0, 2] },
+                                { text: `Validez: ${presupuesto.validezDias || 15} días`, alignment: 'right', margin: [0, 2] },
+                                { text: `Estado: ${formatEstado(presupuesto.estado)}`, alignment: 'right', margin: [0, 2] }
+                            ]
+                        }
+                    ],
+                    margin: [0, 0, 0, 15]
+                },
+
+                // Tabla de Items
+                { text: 'Detalle de Items', style: 'sectionHeader', margin: [0, 10, 0, 5] },
+                {
+                    table: {
+                        headerRows: 1,
+                        widths: ['*', 'auto', 'auto', 'auto'],
+                        body: itemsBody
+                    },
+                    layout: 'lightHorizontalLines',
+                    margin: [0, 0, 0, 15]
+                },
+
+                // Totales
+                {
+                    columns: [
+                        { width: '*', text: '' },
+                        {
+                            width: 200,
+                            table: {
+                                widths: ['*', 'auto'],
+                                body: totalesBody
+                            },
+                            layout: 'noBorders'
+                        }
+                    ],
+                    margin: [0, 0, 0, 15]
+                },
+
+                // Condiciones de Pago
+                presupuesto.condicionesPago ? {
+                    stack: [
+                        { text: 'Condiciones de Pago', style: 'sectionHeader', margin: [0, 10, 0, 5] },
+                        { text: presupuesto.condicionesPago, margin: [0, 0, 0, 10], fillColor: '#f8f9fa' }
+                    ]
+                } : {},
+
+                // Observaciones
+                presupuesto.observaciones ? {
+                    stack: [
+                        { text: 'Observaciones', style: 'sectionHeader', margin: [0, 10, 0, 5] },
+                        { text: presupuesto.observaciones, margin: [0, 0, 0, 10], fillColor: '#f8f9fa' }
+                    ]
+                } : {},
+
+                // Pie de página
+                {
+                    text: [
+                        { text: `Este presupuesto tiene una validez de ${presupuesto.validezDias || 15} días desde su fecha de emisión.\n`, fontSize: 9 },
+                        { text: 'Para consultas comunicarse al teléfono: (XXX) XXX-XXXX', fontSize: 9 }
+                    ],
+                    alignment: 'center',
+                    margin: [0, 20, 0, 0],
+                    color: '#666'
+                }
+            ],
+            styles: {
+                header: {
+                    fontSize: 20,
+                    bold: true,
+                    color: '#007bff'
+                },
+                subheader: {
+                    fontSize: 12,
+                    color: '#666'
+                },
+                title: {
+                    fontSize: 16,
+                    bold: true,
+                    fillColor: '#f8f9fa'
+                },
+                sectionHeader: {
+                    fontSize: 12,
+                    bold: true,
+                    color: '#007bff'
+                },
+                tableHeader: {
+                    bold: true,
+                    fillColor: '#007bff',
+                    color: 'white'
+                }
+            },
+            defaultStyle: {
+                fontSize: 10
+            }
         };
 
-        await html2pdf().set(opciones).from(elementoPDF).save();
-
-        // Limpiar elemento temporal
-        document.body.removeChild(elementoPDF);
+        // Generar y descargar el PDF
+        pdfMake.createPdf(docDefinition).download(`Presupuesto_${presupuesto.numeroPresupuesto}.pdf`);
 
     } catch (error) {
         console.error('Error:', error);
         alert('Error al generar el PDF: ' + error.message);
     }
+}
+
+// Función auxiliar para obtener el texto del tipo de item
+function getTipoItemText(tipo) {
+    const tipos = {
+        'SERVICIO': '[S]',
+        'REPUESTO': '[R]',
+        'MANUAL': '[M]'
+    };
+    return tipos[tipo] || '';
 }
 
 // Hacer la función global
@@ -856,33 +1055,35 @@ function generarHTMLPresupuesto(presupuesto, paraPDF = false) {
             </div>
 
             <!-- Información del cliente y presupuesto -->
-            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-                <div style="flex: 1; padding-right: 10px;">
-                    <h5 style="color: #007bff; margin-bottom: 10px;">
-                        <i class="fas fa-user"></i> Datos del Cliente
-                    </h5>
-                    <p style="margin: 3px 0;"><strong>Nombre:</strong> ${cliente.nombre || ''} ${cliente.apellido || ''}</p>
-                    <p style="margin: 3px 0;"><strong>RUC/CI:</strong> ${cliente.ruc || cliente.cedula || 'N/A'}</p>
-                    <p style="margin: 3px 0;"><strong>Teléfono:</strong> ${cliente.telefono || 'N/A'}</p>
-                    <p style="margin: 3px 0;"><strong>Email:</strong> ${cliente.email || 'N/A'}</p>
-                    <p style="margin: 3px 0;"><strong>Dirección:</strong> ${cliente.direccion || 'N/A'}</p>
-                </div>
-                <div style="flex: 1; padding-left: 10px; text-align: right;">
-                    <h5 style="color: #007bff; margin-bottom: 10px;">
-                        <i class="fas fa-file-invoice"></i> Datos del Presupuesto
-                    </h5>
-                    <p style="margin: 3px 0;"><strong>Pedido:</strong> ${presupuesto.pedido?.numeroPedido || 'N/A'}</p>
-                    <p style="margin: 3px 0;"><strong>Fecha:</strong> ${formatDate(presupuesto.fechaGeneracion)}</p>
-                    <p style="margin: 3px 0;"><strong>Vencimiento:</strong> ${presupuesto.fechaVencimiento ? formatDateOnly(presupuesto.fechaVencimiento) : 'N/A'}</p>
-                    <p style="margin: 3px 0;"><strong>Validez:</strong> ${presupuesto.validezDias || 15} días</p>
-                    <p style="margin: 3px 0;">
-                        <strong>Estado:</strong>
-                        <span style="padding: 2px 8px; border-radius: 3px; background: ${getEstadoColorHex(presupuesto.estado)}; color: white;">
-                            ${formatEstado(presupuesto.estado)}
-                        </span>
-                    </p>
-                </div>
-            </div>
+            <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse;">
+                <tr>
+                    <td style="width: 50%; vertical-align: top; padding-right: 10px;">
+                        <h5 style="color: #007bff; margin-bottom: 10px;">
+                            <i class="fas fa-user"></i> Datos del Cliente
+                        </h5>
+                        <p style="margin: 3px 0;"><strong>Nombre:</strong> ${cliente.nombre || ''} ${cliente.apellido || ''}</p>
+                        <p style="margin: 3px 0;"><strong>RUC/CI:</strong> ${cliente.rucCi || 'N/A'}</p>
+                        <p style="margin: 3px 0;"><strong>Teléfono:</strong> ${cliente.telefono || 'N/A'}</p>
+                        <p style="margin: 3px 0;"><strong>Email:</strong> ${cliente.email || 'N/A'}</p>
+                        <p style="margin: 3px 0;"><strong>Dirección:</strong> ${cliente.direccion || 'N/A'}</p>
+                    </td>
+                    <td style="width: 50%; vertical-align: top; padding-left: 10px; text-align: right;">
+                        <h5 style="color: #007bff; margin-bottom: 10px;">
+                            <i class="fas fa-file-invoice"></i> Datos del Presupuesto
+                        </h5>
+                        <p style="margin: 3px 0;"><strong>Pedido:</strong> ${presupuesto.pedido?.numeroPedido || 'N/A'}</p>
+                        <p style="margin: 3px 0;"><strong>Fecha:</strong> ${formatDate(presupuesto.fechaGeneracion)}</p>
+                        <p style="margin: 3px 0;"><strong>Vencimiento:</strong> ${presupuesto.fechaVencimiento ? formatDateOnly(presupuesto.fechaVencimiento) : 'N/A'}</p>
+                        <p style="margin: 3px 0;"><strong>Validez:</strong> ${presupuesto.validezDias || 15} días</p>
+                        <p style="margin: 3px 0;">
+                            <strong>Estado:</strong>
+                            <span style="padding: 2px 8px; border-radius: 3px; background: ${getEstadoColorHex(presupuesto.estado)}; color: white;">
+                                ${formatEstado(presupuesto.estado)}
+                            </span>
+                        </p>
+                    </td>
+                </tr>
+            </table>
 
             <!-- Tabla de Items -->
             <div style="margin-bottom: 20px;">
@@ -914,28 +1115,33 @@ function generarHTMLPresupuesto(presupuesto, paraPDF = false) {
             </div>
 
             <!-- Totales -->
-            <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
-                <div style="width: 300px; background: #f8f9fa; padding: 15px; border-radius: 5px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <span>Subtotal:</span>
-                        <span>${formatMoney(presupuesto.subtotal)}</span>
-                    </div>
-                    ${presupuesto.descuento > 0 ? `
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #dc3545;">
-                        <span>Descuento:</span>
-                        <span>-${formatMoney(presupuesto.descuento)}</span>
-                    </div>
-                    ` : ''}
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <span>IVA (10%):</span>
-                        <span>${formatMoney(presupuesto.iva)}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 1.2em; font-weight: bold; border-top: 2px solid #007bff; padding-top: 10px; margin-top: 10px;">
-                        <span>TOTAL:</span>
-                        <span style="color: #007bff;">${formatMoney(presupuesto.total)}</span>
-                    </div>
-                </div>
-            </div>
+            <table style="width: 100%; margin-bottom: 20px;">
+                <tr>
+                    <td style="width: 60%;"></td>
+                    <td style="width: 40%;">
+                        <table style="width: 100%; background: #f8f9fa; padding: 15px; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 5px; text-align: left;">Subtotal:</td>
+                                <td style="padding: 5px; text-align: right;"><strong>${formatMoney(presupuesto.subtotal)}</strong></td>
+                            </tr>
+                            ${presupuesto.descuento > 0 ? `
+                            <tr>
+                                <td style="padding: 5px; text-align: left; color: #dc3545;">Descuento:</td>
+                                <td style="padding: 5px; text-align: right; color: #dc3545;"><strong>-${formatMoney(presupuesto.descuento)}</strong></td>
+                            </tr>
+                            ` : ''}
+                            <tr>
+                                <td style="padding: 5px; text-align: left;">IVA (10%):</td>
+                                <td style="padding: 5px; text-align: right;"><strong>${formatMoney(presupuesto.iva)}</strong></td>
+                            </tr>
+                            <tr style="border-top: 2px solid #007bff;">
+                                <td style="padding: 10px 5px 5px 5px; text-align: left; font-size: 1.2em; font-weight: bold;">TOTAL:</td>
+                                <td style="padding: 10px 5px 5px 5px; text-align: right; font-size: 1.2em; font-weight: bold; color: #007bff;">${formatMoney(presupuesto.total)}</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
 
             <!-- Condiciones de Pago -->
             ${presupuesto.condicionesPago ? `

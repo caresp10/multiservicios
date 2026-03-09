@@ -77,31 +77,7 @@ function renderPedidos(data) {
                 }">${pedido.prioridad}</span>
             </td>
             <td>
-                ${pedido.estado === 'COMPLETADO' || pedido.estado === 'CANCELADO' ? `
-                    <span class="badge bg-${getEstadoClass(pedido.estado)}">${formatEstado(pedido.estado)}</span>
-                ` : `
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-${getEstadoClass(pedido.estado)} dropdown-toggle"
-                            type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        ${formatEstado(pedido.estado)}
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item ${pedido.estado === 'NUEVO' ? 'active' : ''}"
-                               href="#" onclick="cambiarEstadoPedido(${pedido.idPedido}, 'NUEVO'); return false;">
-                               <i class="fas fa-circle text-primary me-2"></i>Nuevo</a></li>
-                        <li><a class="dropdown-item ${pedido.estado === 'EN_PROCESO' ? 'active' : ''}"
-                               href="#" onclick="cambiarEstadoPedido(${pedido.idPedido}, 'EN_PROCESO'); return false;">
-                               <i class="fas fa-circle text-warning me-2"></i>En Proceso</a></li>
-                        <li><a class="dropdown-item ${pedido.estado === 'COMPLETADO' ? 'active' : ''}"
-                               href="#" onclick="cambiarEstadoPedido(${pedido.idPedido}, 'COMPLETADO'); return false;">
-                               <i class="fas fa-circle text-success me-2"></i>Completado</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item ${pedido.estado === 'CANCELADO' ? 'active' : ''}"
-                               href="#" onclick="cambiarEstadoPedido(${pedido.idPedido}, 'CANCELADO'); return false;">
-                               <i class="fas fa-circle text-danger me-2"></i>Cancelado</a></li>
-                    </ul>
-                </div>
-                `}
+                <span class="badge bg-${getEstadoClass(pedido.estado)}">${formatEstado(pedido.estado)}</span>
             </td>
             <td>${formatDate(pedido.fechaPedido)}</td>
             <td>
@@ -294,32 +270,13 @@ async function eliminarPedido(id) {
     }
 }
 
-// Cambiar estado del pedido
-async function cambiarEstadoPedido(id, nuevoEstado) {
-    const pedido = pedidos.find(p => p.idPedido === id);
-    if (!pedido) return;
-
-    if (pedido.estado === nuevoEstado) return;
-
-    const estadoTexto = formatEstado(nuevoEstado);
-    if (!confirm(`¿Cambiar el estado del pedido ${pedido.numeroPedido} a "${estadoTexto}"?`)) {
-        return;
-    }
-
-    try {
-        const response = await PedidoService.cambiarEstado(id, nuevoEstado);
-
-        if (response.success) {
-            await cargarPedidos();
-            alert(`Estado cambiado a "${estadoTexto}" exitosamente`);
-        } else {
-            throw new Error(response.message || 'Error al cambiar estado');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error al cambiar el estado: ' + error.message);
-    }
-}
+// NOTA: El estado del pedido cambia AUTOMÁTICAMENTE según el flujo del sistema:
+// - NUEVO -> cuando se crea el pedido
+// - EN_PROCESO -> cuando se crea un presupuesto o una OT asociada al pedido
+// - COMPLETADO -> cuando se factura la OT (ver FacturaService.java líneas 178-183)
+// - CANCELADO -> cuando se rechaza un presupuesto asociado al pedido
+//
+// NO se permite cambiar el estado manualmente para mantener la integridad del flujo
 
 // Funciones auxiliares
 function formatDate(dateString) {
@@ -364,6 +321,173 @@ function getCanalClass(canal) {
     };
     return classes[canal] || 'info';
 }
+
+// ============================================
+// FUNCIONES PARA CREAR CLIENTE RÁPIDO
+// ============================================
+
+let modalNuevoCliente = null;
+let modalNuevaCategoria = null;
+
+// Abrir modal de nuevo cliente
+function abrirModalNuevoCliente() {
+    if (!modalNuevoCliente) {
+        modalNuevoCliente = new bootstrap.Modal(document.getElementById('modalNuevoCliente'));
+    }
+
+    // Limpiar formulario
+    document.getElementById('nuevoClienteForm').reset();
+
+    modalNuevoCliente.show();
+}
+
+// Hacer la función global
+window.abrirModalNuevoCliente = abrirModalNuevoCliente;
+
+// Función para alternar campos según el tipo de cliente
+function toggleCamposCliente() {
+    const tipoCliente = document.getElementById('clienteTipoCliente').value;
+    const divNombre = document.getElementById('divNombre');
+    const divApellido = document.getElementById('divApellido');
+    const divRazonSocial = document.getElementById('divRazonSocial');
+    const labelNombre = document.getElementById('labelNombre');
+    const labelRucCi = document.getElementById('labelRucCi');
+    const inputNombre = document.getElementById('clienteNombre');
+    const inputApellido = document.getElementById('clienteApellido');
+    const inputRazonSocial = document.getElementById('clienteRazonSocial');
+
+    if (tipoCliente === 'EMPRESA') {
+        // Mostrar campos para empresa
+        divNombre.style.display = 'none';
+        divApellido.style.display = 'none';
+        divRazonSocial.style.display = 'block';
+        labelRucCi.textContent = 'RUC *';
+        inputNombre.required = false;
+        inputApellido.required = false;
+        inputRazonSocial.required = true;
+    } else {
+        // Mostrar campos para persona física
+        divNombre.style.display = 'block';
+        divApellido.style.display = 'block';
+        divRazonSocial.style.display = 'none';
+        labelNombre.textContent = 'Nombre *';
+        labelRucCi.textContent = 'CI/Cédula';
+        inputNombre.required = true;
+        inputApellido.required = false;
+        inputRazonSocial.required = false;
+    }
+}
+
+// Hacer la función global
+window.toggleCamposCliente = toggleCamposCliente;
+
+// Guardar nuevo cliente
+async function guardarNuevoCliente() {
+    const form = document.getElementById('nuevoClienteForm');
+
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const tipoCliente = document.getElementById('clienteTipoCliente').value;
+    const clienteData = {
+        tipoCliente: tipoCliente,
+        nombre: document.getElementById('clienteNombre').value || null,
+        apellido: document.getElementById('clienteApellido').value || null,
+        razonSocial: document.getElementById('clienteRazonSocial').value || null,
+        rucCi: document.getElementById('clienteRucCi').value || null,
+        telefono: document.getElementById('clienteTelefono').value,
+        celular: document.getElementById('clienteCelular').value || null,
+        email: document.getElementById('clienteEmail').value || null,
+        ciudad: document.getElementById('clienteCiudad').value || null,
+        direccion: document.getElementById('clienteDireccion').value || null
+    };
+
+    try {
+        const response = await ClienteService.create(clienteData);
+
+        if (response.success && response.data) {
+            // Cerrar modal
+            modalNuevoCliente.hide();
+
+            // Recargar la lista de clientes
+            await cargarDatosFormulario();
+
+            // Seleccionar automáticamente el nuevo cliente
+            document.getElementById('idCliente').value = response.data.idCliente;
+
+            alert('Cliente creado exitosamente');
+        } else {
+            throw new Error(response.message || 'Error al crear cliente');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al crear el cliente: ' + error.message);
+    }
+}
+
+// Hacer la función global
+window.guardarNuevoCliente = guardarNuevoCliente;
+
+// ============================================
+// FUNCIONES PARA CREAR CATEGORÍA RÁPIDA
+// ============================================
+
+// Abrir modal de nueva categoría
+function abrirModalNuevaCategoria() {
+    if (!modalNuevaCategoria) {
+        modalNuevaCategoria = new bootstrap.Modal(document.getElementById('modalNuevaCategoria'));
+    }
+
+    // Limpiar formulario
+    document.getElementById('nuevaCategoriaForm').reset();
+
+    modalNuevaCategoria.show();
+}
+
+// Hacer la función global
+window.abrirModalNuevaCategoria = abrirModalNuevaCategoria;
+
+// Guardar nueva categoría
+async function guardarNuevaCategoria() {
+    const form = document.getElementById('nuevaCategoriaForm');
+
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const categoriaData = {
+        nombre: document.getElementById('categoriaNombre').value,
+        descripcion: document.getElementById('categoriaDescripcion').value || null
+    };
+
+    try {
+        const response = await CategoriaService.create(categoriaData);
+
+        if (response.success && response.data) {
+            // Cerrar modal
+            modalNuevaCategoria.hide();
+
+            // Recargar la lista de categorías
+            await cargarDatosFormulario();
+
+            // Seleccionar automáticamente la nueva categoría
+            document.getElementById('idCategoria').value = response.data.idCategoria;
+
+            alert('Categoría creada exitosamente');
+        } else {
+            throw new Error(response.message || 'Error al crear categoría');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al crear la categoría: ' + error.message);
+    }
+}
+
+// Hacer la función global
+window.guardarNuevaCategoria = guardarNuevaCategoria;
 
 // Inicializar
 document.addEventListener('DOMContentLoaded', function() {

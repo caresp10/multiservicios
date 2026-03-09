@@ -21,6 +21,9 @@ public interface LoteRepuestoRepository extends JpaRepository<LoteRepuesto, Long
     // Obtener todos los lotes de un repuesto
     List<LoteRepuesto> findByRepuestoIdRepuestoOrderByFechaIngresoDesc(Long idRepuesto);
 
+    // Obtener lotes activos de un repuesto ordenados por fecha descendente (para devoluciones)
+    List<LoteRepuesto> findByRepuestoIdRepuestoAndActivoOrderByFechaIngresoDesc(Long idRepuesto, Boolean activo);
+
     // Obtener lotes por proveedor
     List<LoteRepuesto> findByProveedorIdProveedorOrderByFechaIngresoDesc(Long idProveedor);
 

@@ -963,21 +963,31 @@ function renderChartServiciosVsRepuestos(totalServicios, totalRepuestos) {
 }
 
 // ========================================
-// EXPORTAR A PDF
+// EXPORTAR A PDF - Redirige a pdfmake
 // ========================================
 
 async function exportarPDF() {
+    // Llamar a la nueva función con pdfmake
+    return exportarPDFconPdfMake();
+}
+
+// FUNCIÓN ANTIGUA (REEMPLAZADA POR PDFMAKE)
+async function exportarPDF_OLD() {
     // Obtener el tab activo
     const activeTab = document.querySelector('.tab-pane.active');
     const activeTabId = activeTab.id;
 
     let nombreReporte = '';
+    let tituloReporte = '';
     if (activeTabId === 'resumen-panel') {
         nombreReporte = 'Reporte_Resumen_General';
+        tituloReporte = 'Reporte Resumen General';
     } else if (activeTabId === 'stock-panel') {
         nombreReporte = 'Reporte_Stock_Margenes';
+        tituloReporte = 'Reporte Stock y Margenes';
     } else if (activeTabId === 'ventas-panel') {
         nombreReporte = 'Reporte_Ventas';
+        tituloReporte = 'Reporte de Ventas';
     }
 
     const fechaInicio = document.getElementById('fechaInicio').value;
@@ -997,8 +1007,8 @@ async function exportarPDF() {
     const facturas = filtrarPorFecha(facturasRes.success ? facturasRes.data : [], 'fechaEmision');
     const repuestos = repuestosRes.success ? repuestosRes.data : [];
 
-    // Generar contenido según el tab activo
-    let contenidoTablas = '';
+    // Generar contenido según el tab activo con pdfmake
+    let contenido = [];
 
     if (activeTabId === 'resumen-panel') {
         // Estadísticas generales
@@ -1086,131 +1096,277 @@ async function exportarPDF() {
 
         contenidoTablas = `
             <h4>Resumen de Inventario</h4>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10px;">
                 <tr style="background-color: #f8f9fa;">
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Métrica</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Metrica</th>
                     <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Valor</th>
                 </tr>
                 <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Total de Repuestos Activos</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${repuestosActivos.length}</td></tr>
-                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Con Stock Bajo/Crítico</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${stockBajo.length}</td></tr>
+                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Con Stock Bajo/Critico</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${stockBajo.length}</td></tr>
                 <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Sin Stock</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${sinStock.length}</td></tr>
-                <tr><td style="border: 1px solid #dee2e6; padding: 8px;"><strong>Valor Total del Inventario</strong></td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;"><strong>${formatMoney(valorInventario)}</strong></td></tr>
+                <tr><td style="border: 1px solid #dee2e6; padding: 8px;"><strong>Valor Total del Inventario</strong></td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;"><strong>Gs. ${(valorInventario || 0).toLocaleString('es-PY')}</strong></td></tr>
             </table>
 
             ${stockBajo.length > 0 ? `
-                <h4>Repuestos con Stock Bajo/Crítico (Top 15)</h4>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <h4>Repuestos con Stock Bajo/Critico (Top 15)</h4>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10px;">
                     <tr style="background-color: #f8f9fa;">
-                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Código</th>
-                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Nombre</th>
-                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Stock Actual</th>
-                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Stock Mínimo</th>
-                        <th style="border: 1px solid #dee2e6; padding: 8px; text-align: center;">Estado</th>
+                        <th style="border: 1px solid #dee2e6; padding: 6px; text-align: left; width: 15%;">Codigo</th>
+                        <th style="border: 1px solid #dee2e6; padding: 6px; text-align: left; width: 40%;">Nombre</th>
+                        <th style="border: 1px solid #dee2e6; padding: 6px; text-align: right; width: 15%;">Stock Actual</th>
+                        <th style="border: 1px solid #dee2e6; padding: 6px; text-align: right; width: 15%;">Stock Minimo</th>
+                        <th style="border: 1px solid #dee2e6; padding: 6px; text-align: center; width: 15%;">Estado</th>
                     </tr>
                     ${stockBajo.slice(0, 15).map(r => {
                         let estado = '';
                         if (r.stockActual === 0) {
                             estado = 'SIN STOCK';
                         } else if (r.stockActual <= r.stockMinimo) {
-                            estado = 'CRÍTICO';
+                            estado = 'CRITICO';
                         } else if (r.stockActual <= r.puntoReorden) {
                             estado = 'BAJO';
                         }
                         return `
                         <tr>
-                            <td style="border: 1px solid #dee2e6; padding: 8px;">${r.codigo || '-'}</td>
-                            <td style="border: 1px solid #dee2e6; padding: 8px;">${r.nombre}</td>
-                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;"><strong>${r.stockActual || 0}</strong></td>
-                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${r.stockMinimo || 0}</td>
-                            <td style="border: 1px solid #dee2e6; padding: 8px; text-align: center;">${estado}</td>
+                            <td style="border: 1px solid #dee2e6; padding: 6px;">${r.codigo || '-'}</td>
+                            <td style="border: 1px solid #dee2e6; padding: 6px;">${(r.nombre || '').substring(0, 50)}</td>
+                            <td style="border: 1px solid #dee2e6; padding: 6px; text-align: right;"><strong>${r.stockActual || 0}</strong></td>
+                            <td style="border: 1px solid #dee2e6; padding: 6px; text-align: right;">${r.stockMinimo || 0}</td>
+                            <td style="border: 1px solid #dee2e6; padding: 6px; text-align: center; font-size: 9px;">${estado}</td>
                         </tr>
                     `;}).join('')}
                 </table>
-            ` : '<p style="text-align: center; color: #28a745; padding: 20px;"><strong>✓ Todos los repuestos tienen stock adecuado</strong></p>'}
+            ` : '<p style="text-align: center; color: #28a745; padding: 20px;">Todos los repuestos tienen stock adecuado</p>'}
 
-            <h4>Análisis de Márgenes de Ganancia (Top 15)</h4>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <h4>Analisis de Margenes de Ganancia (Top 15)</h4>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 9px;">
                 <tr style="background-color: #f8f9fa;">
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Código</th>
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Nombre</th>
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Precio Costo</th>
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Precio Venta</th>
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Margen Gs.</th>
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Margen %</th>
+                    <th style="border: 1px solid #dee2e6; padding: 5px; text-align: left; width: 12%;">Codigo</th>
+                    <th style="border: 1px solid #dee2e6; padding: 5px; text-align: left; width: 30%;">Nombre</th>
+                    <th style="border: 1px solid #dee2e6; padding: 5px; text-align: right; width: 14%;">Precio Costo</th>
+                    <th style="border: 1px solid #dee2e6; padding: 5px; text-align: right; width: 14%;">Precio Venta</th>
+                    <th style="border: 1px solid #dee2e6; padding: 5px; text-align: right; width: 15%;">Margen Gs.</th>
+                    <th style="border: 1px solid #dee2e6; padding: 5px; text-align: right; width: 15%;">Margen %</th>
                 </tr>
                 ${repuestosConMargen.slice(0, 15).map(r => `
                     <tr>
-                        <td style="border: 1px solid #dee2e6; padding: 8px;">${r.codigo || '-'}</td>
-                        <td style="border: 1px solid #dee2e6; padding: 8px;">${r.nombre}</td>
-                        <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMoney(r.precioCosto)}</td>
-                        <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMoney(r.precioVenta)}</td>
-                        <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right; color: #28a745;"><strong>${formatMoney(r.margenGs)}</strong></td>
-                        <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;"><strong>${r.margenPorcentaje}%</strong></td>
+                        <td style="border: 1px solid #dee2e6; padding: 5px;">${r.codigo || '-'}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 5px;">${(r.nombre || '').substring(0, 40)}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 5px; text-align: right;">Gs. ${(r.precioCosto || 0).toLocaleString('es-PY')}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 5px; text-align: right;">Gs. ${(r.precioVenta || 0).toLocaleString('es-PY')}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 5px; text-align: right; color: #28a745;"><strong>Gs. ${(r.margenGs || 0).toLocaleString('es-PY')}</strong></td>
+                        <td style="border: 1px solid #dee2e6; padding: 5px; text-align: right;"><strong>${r.margenPorcentaje}%</strong></td>
                     </tr>
                 `).join('')}
             </table>
         `;
     } else if (activeTabId === 'ventas-panel') {
         // Reporte de Ventas
+        const facturasValidas = facturas.filter(f => f.estado !== 'ANULADA');
         const facturasPagadas = facturas.filter(f => f.estado === 'PAGADA');
         const totalVentas = facturasPagadas.reduce((sum, f) => sum + (f.total || 0), 0);
 
-        contenidoTablas = `
-            <h4>Resumen de Ventas</h4>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                <tr style="background-color: #f8f9fa;">
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Métrica</th>
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Valor</th>
-                </tr>
-                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Total de Facturas</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${facturas.length}</td></tr>
-                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Facturas Pagadas</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${facturasPagadas.length}</td></tr>
-                <tr><td style="border: 1px solid #dee2e6; padding: 8px;">Total Ventas</td><td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMoney(totalVentas)}</td></tr>
-            </table>
+        // Analizar servicios y repuestos vendidos
+        const serviciosVendidos = {};
+        const repuestosVendidos = {};
+        let totalServicios = 0;
+        let totalRepuestos = 0;
 
-            <h4>Detalle de Facturas</h4>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                <tr style="background-color: #f8f9fa;">
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Nº Factura</th>
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Cliente</th>
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Fecha</th>
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Estado</th>
-                    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">Total</th>
-                </tr>
-                ${facturas.slice(0, 30).map(f => `
-                    <tr>
-                        <td style="border: 1px solid #dee2e6; padding: 8px;">${f.numeroFactura}</td>
-                        <td style="border: 1px solid #dee2e6; padding: 8px;">${f.cliente?.nombre || ''} ${f.cliente?.apellido || ''}</td>
-                        <td style="border: 1px solid #dee2e6; padding: 8px;">${new Date(f.fechaEmision).toLocaleDateString('es-PY')}</td>
-                        <td style="border: 1px solid #dee2e6; padding: 8px;">${f.estado}</td>
-                        <td style="border: 1px solid #dee2e6; padding: 8px; text-align: right;">${formatMoney(f.total)}</td>
+        facturasValidas.forEach(factura => {
+            if (factura.items && Array.isArray(factura.items)) {
+                factura.items.forEach(item => {
+                    const subtotal = parseFloat(item.subtotal) || (parseFloat(item.cantidad) * parseFloat(item.precioUnitario));
+
+                    let esRepuesto = false;
+                    let esServicio = false;
+
+                    if (item.tipoItem === 'REPUESTO' || item.repuesto) {
+                        esRepuesto = true;
+                    } else if (item.tipoItem === 'SERVICIO' || item.servicio) {
+                        esServicio = true;
+                    } else {
+                        const desc = item.descripcion || '';
+                        if (/^[A-Z0-9]+-\s/.test(desc) || /repuesto|pieza|componente/i.test(desc)) {
+                            esRepuesto = true;
+                        } else {
+                            esServicio = true;
+                        }
+                    }
+
+                    if (esServicio) {
+                        const idServicio = item.servicio?.idServicio || `desc_${item.descripcion}`;
+                        const nombreServicio = item.servicio?.nombre || item.descripcion;
+
+                        if (!serviciosVendidos[idServicio]) {
+                            serviciosVendidos[idServicio] = { nombre: nombreServicio, cantidad: 0, total: 0 };
+                        }
+                        serviciosVendidos[idServicio].cantidad += parseFloat(item.cantidad) || 1;
+                        serviciosVendidos[idServicio].total += subtotal;
+                        totalServicios += subtotal;
+                    } else if (esRepuesto) {
+                        const idRepuesto = item.repuesto?.idRepuesto || `desc_${item.descripcion}`;
+                        const nombreRepuesto = item.repuesto ? `${item.repuesto.codigo} - ${item.repuesto.nombre}` : item.descripcion;
+
+                        if (!repuestosVendidos[idRepuesto]) {
+                            repuestosVendidos[idRepuesto] = { nombre: nombreRepuesto, cantidad: 0, total: 0 };
+                        }
+                        repuestosVendidos[idRepuesto].cantidad += parseFloat(item.cantidad) || 1;
+                        repuestosVendidos[idRepuesto].total += subtotal;
+                        totalRepuestos += subtotal;
+                    }
+                });
+            }
+        });
+
+        const topServicios = Object.values(serviciosVendidos).sort((a, b) => b.total - a.total).slice(0, 10);
+        const topRepuestos = Object.values(repuestosVendidos).sort((a, b) => b.total - a.total).slice(0, 10);
+
+        contenidoTablas = `
+            <div style="page-break-inside: avoid;">
+                <h4 style="margin-top: 3px; margin-bottom: 6px; font-size: 11px;">Resumen de Ventas</h4>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 8px;">
+                    <tr style="background-color: #f0f0f0;">
+                        <th style="border: 1px solid #ccc; padding: 4px; text-align: left;">Metrica</th>
+                        <th style="border: 1px solid #ccc; padding: 4px; text-align: right;">Valor</th>
                     </tr>
-                `).join('')}
-            </table>
+                    <tr><td style="border: 1px solid #ccc; padding: 3px;">Total de Facturas</td><td style="border: 1px solid #ccc; padding: 3px; text-align: right;">${facturas.length}</td></tr>
+                    <tr><td style="border: 1px solid #ccc; padding: 3px;">Facturas Pagadas</td><td style="border: 1px solid #ccc; padding: 3px; text-align: right;">${facturasPagadas.length}</td></tr>
+                    <tr><td style="border: 1px solid #ccc; padding: 3px;">Total en Servicios</td><td style="border: 1px solid #ccc; padding: 3px; text-align: right;">Gs. ${(totalServicios || 0).toLocaleString('es-PY')}</td></tr>
+                    <tr><td style="border: 1px solid #ccc; padding: 3px;">Total en Repuestos</td><td style="border: 1px solid #ccc; padding: 3px; text-align: right;">Gs. ${(totalRepuestos || 0).toLocaleString('es-PY')}</td></tr>
+                    <tr style="background-color: #f0f0f0;"><td style="border: 1px solid #ccc; padding: 3px;"><strong>Total Ventas</strong></td><td style="border: 1px solid #ccc; padding: 3px; text-align: right;"><strong>Gs. ${(totalVentas || 0).toLocaleString('es-PY')}</strong></td></tr>
+                </table>
+            </div>
+
+            ${topServicios.length > 0 ? `
+                <div style="page-break-inside: avoid; margin-top: 8px;">
+                    <h4 style="margin-top: 3px; margin-bottom: 6px; font-size: 11px;">Top 10 Servicios Mas Vendidos</h4>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 7px;">
+                        <thead>
+                            <tr style="background-color: #f0f0f0;">
+                                <th style="border: 1px solid #ccc; padding: 3px; text-align: center; width: 6%;">#</th>
+                                <th style="border: 1px solid #ccc; padding: 3px; text-align: left; width: 55%;">Servicio</th>
+                                <th style="border: 1px solid #ccc; padding: 3px; text-align: right; width: 12%;">Cant.</th>
+                                <th style="border: 1px solid #ccc; padding: 3px; text-align: right; width: 27%;">Total Facturado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${topServicios.map((s, index) => `
+                                <tr>
+                                    <td style="border: 1px solid #ccc; padding: 2px; text-align: center;"><strong>${index + 1}</strong></td>
+                                    <td style="border: 1px solid #ccc; padding: 2px;">${(s.nombre || '').substring(0, 60)}</td>
+                                    <td style="border: 1px solid #ccc; padding: 2px; text-align: right;">${s.cantidad}</td>
+                                    <td style="border: 1px solid #ccc; padding: 2px; text-align: right;">Gs. ${(s.total || 0).toLocaleString('es-PY')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : ''}
+
+            ${topRepuestos.length > 0 ? `
+                <div style="page-break-inside: avoid; margin-top: 8px;">
+                    <h4 style="margin-top: 3px; margin-bottom: 6px; font-size: 11px;">Top 10 Repuestos Mas Vendidos</h4>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 7px;">
+                        <thead>
+                            <tr style="background-color: #f0f0f0;">
+                                <th style="border: 1px solid #ccc; padding: 3px; text-align: center; width: 6%;">#</th>
+                                <th style="border: 1px solid #ccc; padding: 3px; text-align: left; width: 55%;">Repuesto</th>
+                                <th style="border: 1px solid #ccc; padding: 3px; text-align: right; width: 12%;">Cant.</th>
+                                <th style="border: 1px solid #ccc; padding: 3px; text-align: right; width: 27%;">Total Facturado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${topRepuestos.map((r, index) => `
+                                <tr>
+                                    <td style="border: 1px solid #ccc; padding: 2px; text-align: center;"><strong>${index + 1}</strong></td>
+                                    <td style="border: 1px solid #ccc; padding: 2px;">${(r.nombre || '').substring(0, 60)}</td>
+                                    <td style="border: 1px solid #ccc; padding: 2px; text-align: right;">${r.cantidad}</td>
+                                    <td style="border: 1px solid #ccc; padding: 2px; text-align: right;">Gs. ${(r.total || 0).toLocaleString('es-PY')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : ''}
+
+            <div style="margin-top: 8px;">
+                <h4 style="margin-top: 3px; margin-bottom: 6px; font-size: 11px;">Detalle de Facturas (Ultimas 50)</h4>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 6.5px; line-height: 1.2;">
+                    <thead>
+                        <tr style="background-color: #f0f0f0;">
+                            <th style="border: 1px solid #ccc; padding: 2px; text-align: left; width: 13%;">N° Factura</th>
+                            <th style="border: 1px solid #ccc; padding: 2px; text-align: left; width: 34%;">Cliente</th>
+                            <th style="border: 1px solid #ccc; padding: 2px; text-align: center; width: 11%;">Fecha</th>
+                            <th style="border: 1px solid #ccc; padding: 2px; text-align: center; width: 12%;">Estado</th>
+                            <th style="border: 1px solid #ccc; padding: 2px; text-align: right; width: 30%;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${facturas.slice(0, 50).map(f => `
+                            <tr>
+                                <td style="border: 1px solid #ccc; padding: 2px; font-size: 6.5px;">${f.numeroFactura || '-'}</td>
+                                <td style="border: 1px solid #ccc; padding: 2px; font-size: 6.5px;">${((f.cliente?.nombre || '') + ' ' + (f.cliente?.apellido || '')).substring(0, 32)}</td>
+                                <td style="border: 1px solid #ccc; padding: 2px; text-align: center; font-size: 6.5px;">${new Date(f.fechaEmision).toLocaleDateString('es-PY')}</td>
+                                <td style="border: 1px solid #ccc; padding: 2px; text-align: center; font-size: 6px;">${formatEstadoFactura(f.estado)}</td>
+                                <td style="border: 1px solid #ccc; padding: 2px; text-align: right; font-size: 6.5px;">Gs. ${(f.total || 0).toLocaleString('es-PY')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
         `;
     }
 
     // Crear elemento para el PDF
     const elemento = document.createElement('div');
-    elemento.style.padding = '20px';
+    elemento.style.padding = '15px';
     elemento.style.fontFamily = 'Arial, sans-serif';
-    elemento.style.fontSize = '12px';
+    elemento.style.fontSize = '10px';
+    elemento.style.lineHeight = '1.3';
+    elemento.style.maxWidth = '100%';
     elemento.innerHTML = `
-        <div style="text-align: center; margin-bottom: 20px;">
-            <h2 style="margin: 0;">Sistema Multiservicios</h2>
-            <h3 style="margin: 10px 0;">${nombreReporte.replace(/_/g, ' ')}</h3>
-            <p style="margin: 5px 0;">Período: ${fechaInicio} al ${fechaFin}</p>
-            <p style="margin: 5px 0;">Generado: ${fechaActual}</p>
+        <div style="text-align: center; margin-bottom: 15px;">
+            <h2 style="margin: 0; font-size: 16px;">Sistema Multiservicios</h2>
+            <h3 style="margin: 8px 0; font-size: 14px;">${nombreReporte.replace(/_/g, ' ')}</h3>
+            <p style="margin: 3px 0; font-size: 9px;">Periodo: ${fechaInicio} al ${fechaFin}</p>
+            <p style="margin: 3px 0; font-size: 9px;">Generado: ${fechaActual}</p>
         </div>
         ${contenidoTablas}
     `;
 
+    // Determinar formato y orientación según el contenido
+    let format = 'a4';
+    let orientation = 'portrait';
+
+    // Para reportes de ventas con muchas tablas, usar oficio
+    if (activeTabId === 'ventas-panel' && facturas.length > 20) {
+        format = [215.9, 330.2]; // Oficio en mm (8.5 x 13 pulgadas)
+        orientation = 'portrait';
+    }
+
     // Configuración de html2pdf
     const opt = {
-        margin: 10,
+        margin: [8, 8, 8, 8],
         filename: `${nombreReporte}_${fechaActual.replace(/\//g, '-')}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        image: { type: 'jpeg', quality: 0.90 },
+        html2canvas: {
+            scale: 2,
+            useCORS: true,
+            letterRendering: true,
+            logging: false
+        },
+        jsPDF: {
+            unit: 'mm',
+            format: format,
+            orientation: orientation,
+            compress: true
+        },
+        pagebreak: {
+            mode: ['avoid-all', 'css', 'legacy'],
+            before: '.page-break-before',
+            after: '.page-break-after',
+            avoid: 'tr'
+        }
     };
 
     // Generar PDF

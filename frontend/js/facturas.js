@@ -16,6 +16,7 @@ let facturas = [];
 let ordenesTerminadas = [];
 let ordenSeleccionada = null;
 let itemsPresupuesto = []; // Items del presupuesto original
+let currentFacturaId = null; // ID de la factura actualmente visible en el modal de vista previa
 const modal = new bootstrap.Modal(document.getElementById('modalFactura'));
 
 document.getElementById('sidebarToggle')?.addEventListener('click', function() {
@@ -170,6 +171,10 @@ function renderFacturas(data) {
                     <i class="fas fa-receipt"></i>
                 </button>
                 ${factura.estado !== 'ANULADA' ? `
+                    <button class="btn btn-sm btn-outline-warning" onclick="crearNotaCredito(${factura.idFactura})"
+                            title="Crear Nota de Crédito">
+                        <i class="fas fa-file-invoice"></i>
+                    </button>
                     <button class="btn btn-sm btn-outline-danger" onclick="abrirModalAnular(${factura.idFactura}, '${factura.numeroFactura}')"
                             title="Anular Factura">
                         <i class="fas fa-ban"></i>
@@ -188,6 +193,7 @@ window.verFacturaPorId = async function(id) {
         const response = await FacturaService.getById(id);
         if (response.success && response.data) {
             const factura = response.data;
+            currentFacturaId = id; // Guardar el ID de la factura actual para el botón de exportar PDF
             document.getElementById('vistaFacturaBody').innerHTML = renderFacturaHTML(factura);
             const modalVista = new bootstrap.Modal(document.getElementById('modalVistaFactura'));
             modalVista.show();
@@ -881,7 +887,12 @@ async function guardarFactura() {
         if (response.success) {
             modal.hide();
             await cargarFacturas();
-            alert('Factura generada exitosamente. La orden de trabajo y el pedido han sido marcados como FACTURADOS.');
+
+            // Obtener el ID de la factura guardada
+            const facturaId = response.data.idFactura;
+
+            // Abrir automáticamente la vista previa de la factura guardada
+            await verFacturaPorId(facturaId);
         } else {
             throw new Error(response.message);
         }
@@ -1950,6 +1961,16 @@ document.addEventListener('DOMContentLoaded', function() {
         btnEditarFactura.addEventListener('click', abrirModalEditar);
     }
 
+    // Event listener para botón descargar PDF en modal de detalles
+    const btnDescargarPDFFactura = document.getElementById('btnDescargarPDFFactura');
+    if (btnDescargarPDFFactura) {
+        btnDescargarPDFFactura.addEventListener('click', function() {
+            if (facturaActual && facturaActual.idFactura) {
+                exportarPDF(facturaActual.idFactura);
+            }
+        });
+    }
+
     // Event listener para mostrar/ocultar detalle de motivo
     const selectMotivo = document.getElementById('anularMotivo');
     if (selectMotivo) {
@@ -1962,4 +1983,30 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Event listener para botón exportar PDF en modal de vista previa
+    const btnExportarPDF = document.getElementById('btnExportarPDF');
+    if (btnExportarPDF) {
+        btnExportarPDF.addEventListener('click', function() {
+            if (currentFacturaId) {
+                exportarPDF(currentFacturaId);
+            } else {
+                alert('No hay factura seleccionada para exportar');
+            }
+        });
+    }
+
+    // Event listener para botón imprimir en modal de vista previa
+    const btnImprimirFactura = document.getElementById('btnImprimirFactura');
+    if (btnImprimirFactura) {
+        btnImprimirFactura.addEventListener('click', function() {
+            window.print();
+        });
+    }
 });
+
+// Función para crear Nota de Crédito desde una factura
+function crearNotaCredito(idFactura) {
+    // Redirigir a la página de notas de crédito con el ID de la factura
+    window.location.href = `notas-credito.html?factura=${idFactura}&crear=true`;
+}

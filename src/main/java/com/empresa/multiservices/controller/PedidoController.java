@@ -70,6 +70,12 @@ public class PedidoController {
         return ResponseEntity.ok(ApiResponse.success("Pedidos del cliente", pedidos));
     }
 
+    @GetMapping("/sin-ot")
+    public ResponseEntity<ApiResponse> listarPedidosSinOT() {
+        List<Pedido> pedidos = pedidoService.listarPedidosSinOT();
+        return ResponseEntity.ok(ApiResponse.success("Pedidos sin OT", pedidos));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'DUENO')")
     public ResponseEntity<ApiResponse> eliminar(@PathVariable Long id) {

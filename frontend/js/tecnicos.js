@@ -68,15 +68,9 @@ function renderTecnicos(data) {
     table.innerHTML = data.map(tecnico => `
         <tr>
             <td>${tecnico.idTecnico}</td>
-            <td>
-                <strong>${tecnico.nombre} ${tecnico.apellido || ''}</strong><br>
-                ${tecnico.email ? `<small class="text-muted">${tecnico.email}</small>` : ''}
-            </td>
+            <td><strong>${tecnico.nombre} ${tecnico.apellido || ''}</strong></td>
             <td>${tecnico.ci || 'N/A'}</td>
-            <td>
-                ${tecnico.telefono || ''}
-                ${tecnico.celular ? `<br><small class="text-muted">${tecnico.celular}</small>` : ''}
-            </td>
+            <td>${tecnico.telefono || tecnico.celular || 'N/A'}</td>
             <td>${tecnico.email || 'N/A'}</td>
             <td>${tecnico.especialidad || 'N/A'}</td>
             <td>

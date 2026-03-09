@@ -21,4 +21,10 @@ public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, Long
     List<OrdenTrabajo> findByTecnicoYFecha(@Param("idTecnico") Long idTecnico,
                                            @Param("inicio") LocalDateTime inicio,
                                            @Param("fin") LocalDateTime fin);
+
+    // Verificar si existe una OT asociada a un pedido
+    boolean existsByPedidoIdPedido(Long idPedido);
+
+    // Verificar si existe una OT asociada a un presupuesto
+    boolean existsByPresupuestoIdPresupuesto(Long idPresupuesto);
 }

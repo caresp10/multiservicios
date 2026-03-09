@@ -133,15 +133,25 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Cliente *</label>
-                                <select class="form-select" id="idCliente" required>
-                                    <option value="">Seleccione un cliente</option>
-                                </select>
+                                <div class="input-group">
+                                    <select class="form-select" id="idCliente" required aria-label="Seleccionar cliente">
+                                        <option value="">Seleccione un cliente</option>
+                                    </select>
+                                    <button class="btn btn-outline-success" type="button" onclick="abrirModalNuevoCliente()" title="Crear nuevo cliente">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Categoría de Servicio *</label>
-                                <select class="form-select" id="idCategoria" required>
-                                    <option value="">Seleccione una categoría</option>
-                                </select>
+                                <div class="input-group">
+                                    <select class="form-select" id="idCategoria" required aria-label="Seleccionar categoría">
+                                        <option value="">Seleccione una categoría</option>
+                                    </select>
+                                    <button class="btn btn-outline-success" type="button" onclick="abrirModalNuevaCategoria()" title="Crear nueva categoría">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Canal *</label>
@@ -176,6 +186,109 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-primary" onclick="guardarPedido()">
                         <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nuevo Cliente -->
+    <div class="modal fade" id="modalNuevoCliente" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-user-plus"></i> Nuevo Cliente
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="nuevoClienteForm">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Tipo de Cliente *</label>
+                                <select class="form-select" id="clienteTipoCliente" required onchange="toggleCamposCliente()">
+                                    <option value="PERSONA">Persona Física</option>
+                                    <option value="EMPRESA">Empresa</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6" id="divNombre">
+                                <label class="form-label" id="labelNombre">Nombre *</label>
+                                <input type="text" class="form-control" id="clienteNombre" required aria-label="Nombre del cliente">
+                            </div>
+                            <div class="col-md-6" id="divApellido">
+                                <label class="form-label">Apellido</label>
+                                <input type="text" class="form-control" id="clienteApellido" aria-label="Apellido del cliente">
+                            </div>
+                            <div class="col-md-12" id="divRazonSocial" style="display:none;">
+                                <label class="form-label">Razón Social *</label>
+                                <input type="text" class="form-control" id="clienteRazonSocial" aria-label="Razón Social">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" id="labelRucCi">RUC/CI</label>
+                                <input type="text" class="form-control" id="clienteRucCi" aria-label="RUC o CI del cliente">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Teléfono *</label>
+                                <input type="tel" class="form-control" id="clienteTelefono" required aria-label="Teléfono del cliente">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Celular</label>
+                                <input type="tel" class="form-control" id="clienteCelular" aria-label="Celular del cliente">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" id="clienteEmail" aria-label="Email del cliente">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Ciudad</label>
+                                <input type="text" class="form-control" id="clienteCiudad" aria-label="Ciudad del cliente">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Dirección</label>
+                                <textarea class="form-control" id="clienteDireccion" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="guardarNuevoCliente()">
+                        <i class="fas fa-save"></i> Guardar Cliente
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nueva Categoría -->
+    <div class="modal fade" id="modalNuevaCategoria" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-tag"></i> Nueva Categoría
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="nuevaCategoriaForm">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre de la Categoría *</label>
+                            <input type="text" class="form-control" id="categoriaNombre" required
+                                   placeholder="Ej: Electricidad, Plomería, etc.">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" id="categoriaDescripcion" rows="3"
+                                      placeholder="Descripción de la categoría..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="guardarNuevaCategoria()">
+                        <i class="fas fa-save"></i> Guardar Categoría
                     </button>
                 </div>
             </div>

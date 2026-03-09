@@ -11,6 +11,49 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        @media print {
+            /* Ocultar todo excepto el contenido del modal */
+            body * {
+                visibility: hidden;
+            }
+
+            /* Mostrar solo el contenido del modal de vista previa */
+            #modalVistaFactura,
+            #modalVistaFactura * {
+                visibility: visible;
+            }
+
+            /* Posicionar el modal en la esquina superior izquierda */
+            #modalVistaFactura {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+
+            /* Ocultar el backdrop del modal */
+            .modal-backdrop {
+                display: none !important;
+            }
+
+            /* Ocultar los botones del footer */
+            #modalVistaFactura .modal-footer {
+                display: none !important;
+            }
+
+            /* Ajustar el modal para impresión */
+            #modalVistaFactura .modal-dialog {
+                max-width: 100%;
+                margin: 0;
+            }
+
+            #modalVistaFactura .modal-content {
+                border: none;
+                box-shadow: none;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="dashboard-wrapper">
@@ -123,6 +166,9 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-primary" id="btnImprimirFactura">
+                            <i class="fas fa-print"></i> Imprimir
+                        </button>
                         <button type="button" class="btn btn-success" id="btnExportarPDF"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
                     </div>
                 </div>
@@ -523,6 +569,9 @@
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-success" id="btnDescargarPDFFactura">
+                        <i class="fas fa-file-pdf"></i> Descargar PDF
+                    </button>
                     <button type="button" class="btn btn-primary" id="btnEditarFactura">
                         <i class="fas fa-edit"></i> Editar
                     </button>

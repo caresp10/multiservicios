@@ -74,7 +74,9 @@ public class CompraService {
 
         // Crear lotes y actualizar precios para cada detalle
         for (DetalleCompra detalle : nuevaCompra.getDetalles()) {
-            Repuesto repuesto = detalle.getRepuesto();
+            // Cargar el repuesto completo desde la base de datos para evitar problemas de lazy loading
+            Repuesto repuesto = repuestoRepository.findById(detalle.getRepuesto().getIdRepuesto())
+                    .orElseThrow(() -> new ResourceNotFoundException("Repuesto no encontrado"));
 
             // Crear lote para este repuesto
             LoteRepuesto lote = LoteRepuesto.builder()

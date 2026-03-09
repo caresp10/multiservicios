@@ -402,7 +402,7 @@ function formatUnidadMedida(unidad) {
 // Generar código automático basado en categoría
 async function generarCodigoAutomatico(idCategoria) {
     try {
-        const response = await fetch(`${API_CONFIG.BASE_URL}/servicios-catalogo/generar-codigo/${idCategoria}`, {
+        const response = await fetch(`${API_BASE_URL}/api/servicios-catalogo/generar-codigo/${idCategoria}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${AuthService.getToken()}`,

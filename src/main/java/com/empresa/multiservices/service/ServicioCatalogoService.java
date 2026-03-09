@@ -1,9 +1,11 @@
 package com.empresa.multiservices.service;
 
 import com.empresa.multiservices.exception.ResourceNotFoundException;
+import com.empresa.multiservices.model.CategoriaServicio;
 import com.empresa.multiservices.model.HistoricoPreciosServicio;
 import com.empresa.multiservices.model.ServicioCatalogo;
 import com.empresa.multiservices.model.Usuario;
+import com.empresa.multiservices.repository.CategoriaServicioRepository;
 import com.empresa.multiservices.repository.HistoricoPreciosServicioRepository;
 import com.empresa.multiservices.repository.ServicioCatalogoRepository;
 import com.empresa.multiservices.repository.UsuarioRepository;
@@ -30,6 +32,9 @@ public class ServicioCatalogoService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    @Autowired
+    private CategoriaServicioRepository categoriaServicioRepository;
+
     public ServicioCatalogo crear(ServicioCatalogo servicio) {
         // Generar código automáticamente si no se proporcionó o si está vacío
         if (servicio.getCodigo() == null || servicio.getCodigo().trim().isEmpty()) {
@@ -52,20 +57,19 @@ public class ServicioCatalogoService {
      * Formato: PREFIJO-NNN (ej: ELEC-001, MECAN-015)
      */
     public String generarCodigoPorCategoria(Long idCategoria) {
-        ServicioCatalogo servicioEjemplo = new ServicioCatalogo();
-        servicioEjemplo.setCategoria(new com.empresa.multiservices.model.CategoriaServicio());
-        servicioEjemplo.getCategoria().setIdCategoria(idCategoria);
+        // Obtener la categoría desde la base de datos
+        CategoriaServicio categoria = categoriaServicioRepository.findById(idCategoria)
+                .orElseThrow(() -> new ResourceNotFoundException("Categoría no encontrada con ID: " + idCategoria));
+
+        // Obtener el prefijo de la categoría (si no tiene, usar "SRV" por defecto)
+        String prefijo = (categoria.getPrefijo() != null && !categoria.getPrefijo().trim().isEmpty())
+                ? categoria.getPrefijo().trim()
+                : "SRV";
 
         // Obtener todos los servicios de esta categoría
         List<ServicioCatalogo> serviciosCategoria = servicioCatalogoRepository.findByCategoriaIdCategoria(idCategoria);
 
-        // Obtener el prefijo de la categoría
-        ServicioCatalogo primerServicio = serviciosCategoria.isEmpty() ? null : serviciosCategoria.get(0);
-        String prefijo = (primerServicio != null && primerServicio.getCategoria() != null && primerServicio.getCategoria().getPrefijo() != null)
-                        ? primerServicio.getCategoria().getPrefijo()
-                        : "SRV";
-
-        // Buscar el siguiente número disponible
+        // Buscar el siguiente número disponible para este prefijo específico
         int maxNumero = 0;
         for (ServicioCatalogo s : serviciosCategoria) {
             if (s.getCodigo() != null && s.getCodigo().startsWith(prefijo + "-")) {

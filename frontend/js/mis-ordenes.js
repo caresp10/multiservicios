@@ -90,8 +90,9 @@ async function cargarMisOrdenes() {
 
             // Filtrar estados relevantes para técnicos
             // Incluir ABIERTA para OTs recién creadas que necesitan ser iniciadas
+            // Incluir FACTURADA para mostrar el historial completo de trabajos realizados
             ordenes = ordenes.filter(orden =>
-                ['ABIERTA', 'ASIGNADA', 'EN_PROCESO', 'ESPERANDO_REVISION', 'DEVUELTA_A_TECNICO', 'TERMINADA'].includes(orden.estado)
+                ['ABIERTA', 'ASIGNADA', 'EN_PROCESO', 'ESPERANDO_REVISION', 'DEVUELTA_A_TECNICO', 'TERMINADA', 'FACTURADA'].includes(orden.estado)
             );
 
             console.log('Órdenes filtradas por estado:', ordenes.length);
@@ -128,7 +129,12 @@ function renderOrdenes(data) {
         return;
     }
 
-    table.innerHTML = data.map(orden => `
+    table.innerHTML = data.map(orden => {
+        // Determinar si se puede trabajar en la orden o solo visualizar
+        const puedeTrabajar = ['ABIERTA', 'ASIGNADA', 'EN_PROCESO', 'DEVUELTA_A_TECNICO'].includes(orden.estado);
+        const esHistorial = ['ESPERANDO_REVISION', 'TERMINADA', 'FACTURADA'].includes(orden.estado);
+
+        return `
         <tr>
             <td><strong>${orden.numeroOt}</strong></td>
             <td>
@@ -151,13 +157,21 @@ function renderOrdenes(data) {
             </td>
             <td>${formatDate(orden.fechaAsignacion || orden.fechaCreacion)}</td>
             <td>
-                <button class="btn btn-sm btn-outline-primary" onclick="abrirOrden(${orden.idOt})"
-                        title="Trabajar en esta orden">
-                    <i class="fas fa-wrench"></i> Trabajar
-                </button>
+                ${puedeTrabajar ? `
+                    <button class="btn btn-sm btn-outline-primary" onclick="abrirOrden(${orden.idOt})"
+                            title="Trabajar en esta orden">
+                        <i class="fas fa-wrench"></i> Trabajar
+                    </button>
+                ` : esHistorial ? `
+                    <button class="btn btn-sm btn-outline-info" onclick="abrirOrden(${orden.idOt})"
+                            title="Ver historial de trabajo">
+                        <i class="fas fa-history"></i> Historial
+                    </button>
+                ` : ''}
             </td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // Filtros
@@ -233,29 +247,55 @@ function mostrarBotonesSegunEstado(estado) {
     const btnIniciar = document.getElementById('btnIniciarTrabajo');
     const btnGuardar = document.getElementById('btnGuardarProgreso');
     const btnEnviar = document.getElementById('btnEnviarRevision');
+    const diagnosticoField = document.getElementById('diagnosticoTecnico');
+    const informeField = document.getElementById('informeFinal');
+    const horasField = document.getElementById('horasTrabajadas');
+    const costoField = document.getElementById('costoManoObra');
 
-    // Ocultar todos primero
+    // Ocultar todos los botones primero
     btnIniciar.style.display = 'none';
     btnGuardar.style.display = 'none';
     btnEnviar.style.display = 'none';
 
+    // Habilitar todos los campos por defecto (se deshabilitan según el caso)
+    diagnosticoField.disabled = false;
+    informeField.disabled = false;
+    horasField.disabled = false;
+    costoField.disabled = false;
+
+    // Quitar el atributo required por defecto (se agrega según el caso)
+    diagnosticoField.required = false;
+    informeField.required = false;
+    horasField.required = false;
+
     switch(estado) {
         case 'ABIERTA':
         case 'ASIGNADA':
+            // En estado ASIGNADA, el técnico solo puede ver el problema y hacer click en "Iniciar Trabajo"
+            // No puede ingresar diagnóstico ni solución todavía
             btnIniciar.style.display = 'inline-block';
+            diagnosticoField.disabled = true;
+            informeField.disabled = true;
+            horasField.disabled = true;
+            costoField.disabled = true;
             break;
         case 'EN_PROCESO':
         case 'DEVUELTA_A_TECNICO':
+            // Ahora sí puede ingresar diagnóstico, solución y horas trabajadas
             btnGuardar.style.display = 'inline-block';
             btnEnviar.style.display = 'inline-block';
+            diagnosticoField.required = true;
+            informeField.required = true;
+            horasField.required = true;
             break;
         case 'ESPERANDO_REVISION':
         case 'TERMINADA':
+        case 'FACTURADA':
             // Solo lectura - todos los campos deshabilitados
-            document.getElementById('diagnosticoTecnico').disabled = true;
-            document.getElementById('informeFinal').disabled = true;
-            document.getElementById('horasTrabajadas').disabled = true;
-            document.getElementById('costoManoObra').disabled = true;
+            diagnosticoField.disabled = true;
+            informeField.disabled = true;
+            horasField.disabled = true;
+            costoField.disabled = true;
             break;
         default:
             break;
@@ -276,9 +316,17 @@ async function iniciarTrabajo() {
         const response = await OrdenTrabajoService.update(ordenActual.idOt, ordenData);
 
         if (response.success) {
-            alert('Trabajo iniciado. Ahora puede registrar el diagnóstico e informe.');
-            modal.hide();
-            await cargarMisOrdenes();
+            // Actualizar el estado de la orden actual
+            ordenActual.estado = 'EN_PROCESO';
+
+            // Recargar la lista de órdenes en segundo plano
+            cargarMisOrdenes();
+
+            // Actualizar la vista del modal para mostrar los campos habilitados
+            mostrarBotonesSegunEstado('EN_PROCESO');
+
+            // Mostrar mensaje informativo
+            alert('Trabajo iniciado. Ahora puede registrar el diagnóstico e informe del trabajo realizado.');
         } else {
             throw new Error(response.message);
         }

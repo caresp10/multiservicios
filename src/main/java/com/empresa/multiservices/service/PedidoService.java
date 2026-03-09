@@ -110,7 +110,16 @@ public class PedidoService {
     public List<Pedido> listarPorCliente(Long idCliente) {
         return pedidoRepository.findByClienteIdCliente(idCliente);
     }
-    
+
+    public List<Pedido> listarPedidosSinOT() {
+        // Retornar pedidos en estado EN_PROCESO o NUEVO que no tengan OT
+        List<Pedido> pedidos = pedidoRepository.findAll();
+        return pedidos.stream()
+                .filter(p -> !p.getTieneOt() &&
+                           (p.getEstado() == EstadoPedido.EN_PROCESO || p.getEstado() == EstadoPedido.NUEVO))
+                .toList();
+    }
+
     public void eliminar(Long id) {
         Pedido pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido no encontrado"));

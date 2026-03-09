@@ -14,6 +14,51 @@
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../css/styles.css">
+
+    <!-- Estilos para impresión -->
+    <style>
+        @media print {
+            /* Ocultar todo excepto el contenido del modal */
+            body * {
+                visibility: hidden;
+            }
+
+            /* Mostrar solo el contenido del modal de vista previa */
+            #modalVistaPrevia,
+            #modalVistaPrevia * {
+                visibility: visible;
+            }
+
+            /* Posicionar el modal en la esquina superior izquierda */
+            #modalVistaPrevia {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+
+            /* Ocultar el backdrop del modal */
+            .modal-backdrop {
+                display: none !important;
+            }
+
+            /* Ocultar los botones del footer */
+            #modalVistaPrevia .modal-footer {
+                display: none !important;
+            }
+
+            /* Ajustar el modal para impresión */
+            #modalVistaPrevia .modal-dialog {
+                max-width: 100%;
+                margin: 0;
+            }
+
+            #modalVistaPrevia .modal-content {
+                border: none;
+                box-shadow: none;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="dashboard-wrapper">
@@ -416,6 +461,9 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         <i class="fas fa-times"></i> Cerrar
                     </button>
+                    <button type="button" class="btn btn-primary" id="btnImprimirPresupuesto">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
                     <button type="button" class="btn btn-success" id="btnDescargarPDF">
                         <i class="fas fa-file-pdf"></i> Descargar PDF
                     </button>
@@ -430,8 +478,9 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <!-- html2pdf para generación de PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- pdfmake para generación de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/sidebar.js"></script>

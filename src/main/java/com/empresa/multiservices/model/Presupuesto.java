@@ -1,5 +1,6 @@
 package com.empresa.multiservices.model;
 
+import com.empresa.multiservices.model.enums.EstadoOT;
 import com.empresa.multiservices.model.enums.EstadoPresupuesto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
@@ -78,4 +79,21 @@ public class Presupuesto {
     @OneToMany(mappedBy = "presupuesto", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<PresupuestoItem> items = new ArrayList<>();
+
+    @OneToMany(mappedBy = "presupuesto", fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "presupuesto", "pedido"})
+    private List<OrdenTrabajo> ordenesTrabajo;
+
+    /**
+     * Verifica si este presupuesto tiene al menos una orden de trabajo facturada
+     * Campo transient para uso en el frontend
+     */
+    @Transient
+    public boolean getTieneOrdenFacturada() {
+        if (ordenesTrabajo == null || ordenesTrabajo.isEmpty()) {
+            return false;
+        }
+        return ordenesTrabajo.stream()
+                .anyMatch(ot -> ot.getEstado() == EstadoOT.FACTURADA);
+    }
 }

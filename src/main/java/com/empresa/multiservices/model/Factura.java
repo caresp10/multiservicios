@@ -77,6 +77,14 @@ public class Factura {
     @Builder.Default
     private EstadoFactura estado = EstadoFactura.PENDIENTE;
 
+    @Column(name = "tiene_nota_credito")
+    @Builder.Default
+    private Boolean tieneNotaCredito = false;
+
+    @Column(name = "monto_notas_credito", precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal montoNotasCredito = BigDecimal.ZERO;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "forma_pago", columnDefinition = "VARCHAR(20)")
     @Builder.Default

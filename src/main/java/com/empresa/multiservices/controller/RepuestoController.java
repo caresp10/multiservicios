@@ -37,7 +37,7 @@ public class RepuestoController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO', 'SUPERVISOR')")
     public ResponseEntity<ApiResponse> obtenerPorId(@PathVariable Long id) {
         Repuesto repuesto = repuestoService.obtenerPorId(id);
         return ResponseEntity.ok(ApiResponse.success("Repuesto encontrado", repuesto));
@@ -51,28 +51,28 @@ public class RepuestoController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO', 'SUPERVISOR')")
     public ResponseEntity<ApiResponse> listarTodos() {
         List<Repuesto> repuestos = repuestoService.listarTodos();
         return ResponseEntity.ok(ApiResponse.success("Lista de repuestos", repuestos));
     }
 
     @GetMapping("/activos")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO', 'SUPERVISOR')")
     public ResponseEntity<ApiResponse> listarActivos() {
         List<Repuesto> repuestos = repuestoService.listarActivos();
         return ResponseEntity.ok(ApiResponse.success("Repuestos activos", repuestos));
     }
 
     @GetMapping("/buscar")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO', 'SUPERVISOR')")
     public ResponseEntity<ApiResponse> buscar(@RequestParam String q) {
         List<Repuesto> repuestos = repuestoService.buscar(q);
         return ResponseEntity.ok(ApiResponse.success("Resultados de búsqueda", repuestos));
     }
 
     @GetMapping("/categoria/{idCategoria}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO', 'SUPERVISOR')")
     public ResponseEntity<ApiResponse> listarPorCategoria(@PathVariable Long idCategoria) {
         List<Repuesto> repuestos = repuestoService.listarPorCategoria(idCategoria);
         return ResponseEntity.ok(ApiResponse.success("Repuestos de la categoría", repuestos));
@@ -117,7 +117,7 @@ public class RepuestoController {
     }
 
     @GetMapping("/{id}/stock/verificar")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DUENO', 'TECNICO', 'SUPERVISOR')")
     public ResponseEntity<ApiResponse> verificarStock(@PathVariable Long id,
                                                        @RequestParam Integer cantidad) {
         boolean disponible = repuestoService.verificarStockDisponible(id, cantidad);

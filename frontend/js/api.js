@@ -44,12 +44,12 @@ class ApiService {
         return this.request(endpoint, { method: 'PUT', body });
     }
 
-    static delete(endpoint) {
-        return this.request(endpoint, { method: 'DELETE' });
-    }
-
     static patch(endpoint, body = null) {
         return this.request(endpoint, { method: 'PATCH', body });
+    }
+
+    static delete(endpoint) {
+        return this.request(endpoint, { method: 'DELETE' });
     }
 }
 
@@ -107,6 +107,10 @@ class PedidoService {
 
     static cambiarEstado(id, estado) {
         return ApiService.patch(`/pedidos/${id}/estado?estado=${estado}`);
+    }
+
+    static getPedidosSinOT() {
+        return ApiService.get('/pedidos/sin-ot');
     }
 }
 
@@ -465,5 +469,44 @@ class TimbradoService {
 
     static activar(id) {
         return ApiService.put(`/timbrados/${id}/activar`, {});
+    }
+}
+
+// Servicio de Notas de Crédito
+class NotaCreditoService {
+    static getAll() {
+        return ApiService.get('/notas-credito');
+    }
+
+    static getById(id) {
+        return ApiService.get(`/notas-credito/${id}`);
+    }
+
+    static getByNumero(numeroNC) {
+        return ApiService.get(`/notas-credito/numero/${numeroNC}`);
+    }
+
+    static getByFactura(idFactura) {
+        return ApiService.get(`/notas-credito/factura/${idFactura}`);
+    }
+
+    static getByEstado(estado) {
+        return ApiService.get(`/notas-credito/estado/${estado}`);
+    }
+
+    static create(notaCredito) {
+        return ApiService.post('/notas-credito', notaCredito);
+    }
+
+    static aplicar(id) {
+        return ApiService.patch(`/notas-credito/${id}/aplicar`);
+    }
+
+    static anular(id, motivo) {
+        return ApiService.patch(`/notas-credito/${id}/anular`, { motivo });
+    }
+
+    static generarNumero() {
+        return ApiService.get('/notas-credito/generar-numero');
     }
 }

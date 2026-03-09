@@ -493,7 +493,7 @@ public class FacturaService {
         clienteData.put("idCliente", cliente.getIdCliente());
         clienteData.put("nombre", cliente.getNombre());
         clienteData.put("apellido", cliente.getApellido());
-        clienteData.put("documento", cliente.getRucCi());
+        clienteData.put("rucCi", cliente.getRucCi());
         clienteData.put("telefono", cliente.getTelefono());
         clienteData.put("email", cliente.getEmail());
         clienteData.put("direccion", cliente.getDireccion());

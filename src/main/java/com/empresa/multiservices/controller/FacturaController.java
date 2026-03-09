@@ -37,8 +37,14 @@ public class FacturaController {
     public ResponseEntity<ApiResponse> obtenerPorId(@PathVariable Long id) {
         try {
             Factura factura = facturaService.obtenerPorId(id);
-            // Forzar la carga de los items (evitar lazy loading en la serialización)
+            // Forzar la carga de relaciones lazy (evitar lazy loading en la serialización)
             factura.getItems().size();
+            if (factura.getCliente() != null) {
+                factura.getCliente().getNombre(); // Forzar carga del cliente
+            }
+            if (factura.getTimbradoObj() != null) {
+                factura.getTimbradoObj().getNumero(); // Forzar carga del timbrado
+            }
             return ResponseEntity.ok(ApiResponse.success("Factura encontrada", factura));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)

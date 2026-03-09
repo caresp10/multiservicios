@@ -91,20 +91,28 @@ function renderOrdenes(data) {
             <td>${formatDate(orden.fechaCreacion)}</td>
             <td>${orden.fechaInicio ? formatDate(orden.fechaInicio) : '<span class="text-muted">-</span>'}</td>
             <td>
+                ${orden.estado !== 'FACTURADA' ? `
                 <button class="btn btn-sm btn-outline-primary" onclick="editarOrden(${orden.idOt})"
                         title="Editar">
                     <i class="fas fa-edit"></i>
                 </button>
+                ` : `
+                <button class="btn btn-sm btn-outline-secondary" disabled title="No se puede editar una orden facturada">
+                    <i class="fas fa-lock"></i>
+                </button>
+                `}
                 ${orden.tecnico && ['ASIGNADA', 'EN_PROCESO', 'DEVUELTA_A_TECNICO'].includes(orden.estado) && (user.rol === 'ADMIN' || user.rol === 'SUPERVISOR') ? `
                 <button class="btn btn-sm btn-outline-warning" onclick="reasignarTecnico(${orden.idOt})"
                         title="Reasignar Técnico">
                     <i class="fas fa-user-edit"></i>
                 </button>
                 ` : ''}
+                ${orden.estado !== 'FACTURADA' ? `
                 <button class="btn btn-sm btn-outline-danger" onclick="eliminarOrden(${orden.idOt})"
                         title="Eliminar">
                     <i class="fas fa-trash"></i>
                 </button>
+                ` : ''}
             </td>
         </tr>
     `).join('');
@@ -138,12 +146,10 @@ function aplicarFiltros() {
 // Cargar datos del formulario
 async function cargarDatosFormulario() {
     try {
-        // Cargar pedidos EN_PROCESO (tienen presupuesto aceptado) o NUEVO con presupuesto aceptado
-        const pedidosResponse = await PedidoService.getAll();
+        // Cargar solo pedidos que no tienen OT asociada (evita duplicados)
+        const pedidosResponse = await PedidoService.getPedidosSinOT();
         if (pedidosResponse.success && pedidosResponse.data) {
-            pedidos = pedidosResponse.data.filter(p =>
-                p.estado === 'EN_PROCESO' || p.estado === 'NUEVO'
-            );
+            pedidos = pedidosResponse.data;
             const select = document.getElementById('idPedido');
             select.innerHTML = '<option value="">Seleccione un pedido</option>' +
                 pedidos.map(p => `<option value="${p.idPedido}">${p.numeroPedido} - ${p.cliente?.nombre || 'Sin cliente'}</option>`).join('');
@@ -303,6 +309,12 @@ async function editarOrden(id) {
         if (response.success && response.data) {
             const orden = response.data;
 
+            // Proteger órdenes facturadas de cualquier edición
+            if (orden.estado === 'FACTURADA') {
+                alert('No se puede editar una orden que ya ha sido facturada.');
+                return;
+            }
+
             // Si la orden está esperando revisión, abrir modal de revisión
             if (orden.estado === 'ESPERANDO_REVISION') {
                 abrirModalRevision(orden);
@@ -449,6 +461,13 @@ async function guardarOrden() {
         let response;
 
         if (id) {
+            // Validar que la orden no esté facturada antes de actualizar
+            const ordenActual = await OrdenTrabajoService.getById(id);
+            if (ordenActual.success && ordenActual.data && ordenActual.data.estado === 'FACTURADA') {
+                alert('No se puede modificar una orden que ya ha sido facturada.');
+                return;
+            }
+
             // Actualización - enviar todos los campos
             const ordenData = {
                 idPedido: parseInt(document.getElementById('idPedido').value),
@@ -485,11 +504,18 @@ async function guardarOrden() {
 
 // Eliminar orden
 async function eliminarOrden(id) {
-    if (!confirm('¿Está seguro que desea eliminar esta orden de trabajo?')) {
-        return;
-    }
-
     try {
+        // Validar que la orden no esté facturada antes de eliminar
+        const ordenActual = await OrdenTrabajoService.getById(id);
+        if (ordenActual.success && ordenActual.data && ordenActual.data.estado === 'FACTURADA') {
+            alert('No se puede eliminar una orden que ya ha sido facturada.');
+            return;
+        }
+
+        if (!confirm('¿Está seguro que desea eliminar esta orden de trabajo?')) {
+            return;
+        }
+
         const response = await OrdenTrabajoService.delete(id);
 
         if (response.success) {
@@ -514,6 +540,12 @@ async function reasignarTecnico(idOt) {
         }
 
         const orden = response.data;
+
+        // Proteger órdenes facturadas de reasignación
+        if (orden.estado === 'FACTURADA') {
+            alert('No se puede reasignar técnico a una orden que ya ha sido facturada.');
+            return;
+        }
         const tecnicoActual = orden.tecnico;
         const categoriaIdPedido = orden.pedido?.categoria?.idCategoria;
 
@@ -525,18 +557,29 @@ async function reasignarTecnico(idOt) {
 
         let tecnicosDisponibles = tecnicosResponse.data.filter(t => t.activo);
 
-        // Si hay categoría, filtrar técnicos por categoría
+        // Si hay categoría, filtrar técnicos SOLO de esa categoría (reasignación debe ser dentro de la misma categoría)
         if (categoriaIdPedido) {
-            tecnicosDisponibles = tecnicosDisponibles.filter(t =>
-                !t.categoria || t.categoria.idCategoria === categoriaIdPedido
-            );
+            tecnicosDisponibles = tecnicosDisponibles.filter(t => {
+                // El técnico debe tener la misma categoría que el pedido
+                if (t.categoria && t.categoria.idCategoria === categoriaIdPedido) {
+                    return true;
+                }
+                // Si no tiene categoría pero tiene especialidad, comparar por nombre
+                if (!t.categoria && t.especialidad) {
+                    const categoriaNombre = orden.pedido?.categoria?.nombre || '';
+                    return t.especialidad.toLowerCase().includes(categoriaNombre.toLowerCase()) ||
+                           categoriaNombre.toLowerCase().includes(t.especialidad.toLowerCase());
+                }
+                return false;
+            });
         }
 
         // Excluir el técnico actual
         tecnicosDisponibles = tecnicosDisponibles.filter(t => t.idTecnico !== tecnicoActual?.idTecnico);
 
         if (tecnicosDisponibles.length === 0) {
-            alert('No hay otros técnicos disponibles para reasignar');
+            const categoriaNombre = orden.pedido?.categoria?.nombre || 'la categoría del pedido';
+            alert(`No hay otros técnicos disponibles de ${categoriaNombre} para reasignar. La reasignación debe ser dentro de la misma categoría.`);
             return;
         }
 
